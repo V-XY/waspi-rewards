@@ -1,7 +1,7 @@
-# Use the official PHP image with Apache
-FROM php:8.2-apache
+# Use PHP 8.4 (Required for your Laravel/Symfony version)
+FROM php:8.4-apache
 
-# Install system dependencies and PHP extensions needed for Laravel
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
     npm \
     && apt-get clean
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Install PHP extensions needed for Laravel AND SQLite
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_sqlite
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
