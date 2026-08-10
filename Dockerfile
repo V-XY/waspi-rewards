@@ -1,7 +1,7 @@
-# Use PHP 8.4 (Required for your Laravel/Symfony version)
+# Use PHP 8.4
 FROM php:8.4-apache
 
-# Install system dependencies
+# Install system dependencies + SQLite3 dev libraries (CRUCIAL FIX)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,10 +12,12 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
+    libsqlite3-dev \
     && apt-get clean
 
-# Install PHP extensions needed for Laravel AND SQLite
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_sqlite
+# Install PHP extensions (Split into two lines to avoid build crashes)
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo_sqlite
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
