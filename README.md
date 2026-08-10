@@ -1,226 +1,104 @@
-# WASPI REWARDS – Full Stack Developer Technical Test
+# WASPI Rewards
 
-A small point and badge system for rewarding user engagement through comments and likes.
+<div style="max-width: 800px; margin: 0 auto; padding: 20px 0;">
 
-## Live Demo
+<p style="font-size: 1.1rem; line-height: 1.8; color: #333; margin-bottom: 2rem;">
+    This is a Laravel application I built to demonstrate a points and badge system. It rewards users for engaging with the platform through comments and likes.
+</p>
 
-[Insert your deployed URL here]
+<hr style="border: 0; border-top: 2px solid #eee; margin: 2rem 0;">
 
-## Tech Stack
+<p style="font-weight: 600; margin-bottom: 0.5rem;">Live Demo:</p>
+<p style="margin-bottom: 2rem;">
+    <a href="https://waspi-rewards-0iak.onrender.com" style="color: #0366d6; text-decoration: none; font-weight: 500;">https://waspi-rewards-0iak.onrender.com</a>
+</p>
 
-| Layer | Technology |
-|---|---|
-| Backend | Laravel 13, PHP 8.3+ |
-| Authentication | Laravel Sanctum |
-| Database | SQLite (development) / MySQL |
-| Frontend | Vue 3, Vite, Axios |
-| Styling | SCSS |
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">The Tech Stack</h2>
 
-## Features
+<p style="line-height: 1.8; color: #333; margin-bottom: 1.5rem;">
+    The backend runs on Laravel 13 with PHP 8.4. I used Laravel Sanctum to handle the authentication. SQLite manages the database during development to keep things simple, and I used Vue 3 with Vite for the frontend, along with Axios for API calls and SCSS for styling.
+</p>
 
-- Users earn points from comment and like milestones
-- Badges are based on the user's current points
-- The next badge is returned by the API
-- Comment creation through a modal
-- Like and unlike comments
-- Users can delete their own comments
-- Token-protected users API with filters
-- Seed data with different reward states
-- Feature tests for the main reward and API rules
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">How the Rewards Work</h2>
 
-## Reward Rules
+<p style="line-height: 1.8; color: #333; margin-bottom: 1.5rem;">
+    When a user hits a specific milestone, they earn points. The first comment gives them 50 points. Reaching the 30th comment pushes their total comment points to 2,500, and the 50th comment takes it to 5,000. For likes, the 10th like on any comment earns an additional 500 points. Once they reach 50 points total, they unlock the beginner badge. At 2,500 points they get the top-fan badge, and crossing 5,000 points gives them the super-fan badge. The backend calculates all of this and returns the correct status in the API response.
+</p>
 
-| Action | Milestone | Points Awarded | Badge at the milestone |
-|---|---:|---:|---|
-| Comment | 1st | 50 | beginner-badge |
-| Comment | 30th | 2,500 total comment points | top-fan |
-| Comment | 50th | 5,000 total comment points | super-fan |
-| Like | 10th | 500 | beginner-badge |
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">Setting It Up Locally</h2>
 
-Comment rewards are cumulative toward the milestone total. The first comment gives 50 points, the 30th comment brings the user's comment-earned points to 2,500, and the 50th brings them to 5,000.
+<p style="line-height: 1.8; color: #333; margin-bottom: 1rem;">
+    To run this on your own machine, clone the repository and run composer install to pull in the PHP dependencies. Copy the environment file, generate your application key, and run the migrations and seeders to get some demo data. You will need npm to install the frontend dependencies and build the assets. After that, php artisan serve starts the local server.
+</p>
 
-Like rewards are added separately. A user with 30 comments and 10 likes therefore has 3,000 points.
-
-Badge status is based on points:
-
-- 50+ points → beginner-badge
-- 2,500+ points → top-fan
-- 5,000+ points → super-fan
-
-This also means a user with 3,000 points is a top-fan, as specified in the assessment.
-
-## Setup
-
-### Requirements
-
-- PHP 8.3+
-- Composer
-- Node.js and NPM
-- SQLite or MySQL
-
-### Installation
-
-```bash
-# Clone the repository
-git clone [your-repo-url]
+<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 6px; overflow-x: auto; margin: 1.5rem 0;">
+<pre style="margin: 0; font-family: monospace; font-size: 0.9rem; color: #24292e;">git clone [repo]
 cd waspi-rewards
 
-# Install PHP dependencies
 composer install
-
-# Configure the application
 cp .env.example .env
 php artisan key:generate
 
-# Configure the database in .env, for example:
-# DB_CONNECTION=sqlite
-# DB_DATABASE=/absolute/path/to/database.sqlite
-
-# Run migrations and seed demo data
+# Configure DB (SQLite by default)
 php artisan migrate --seed
 
-# Install frontend dependencies
 npm install
-
-# Build frontend assets
 npm run build
 
-# Start the application
-php artisan serve
-```
+php artisan serve</pre>
+</div>
 
-Visit the application URL shown by `php artisan serve`.
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">Interacting with the API</h2>
 
-## API
+<p style="line-height: 1.8; color: #333; margin-bottom: 1rem;">
+    There are a few RESTful endpoints for users and comments. You will need to pass a valid access token to access the users endpoint, either as a query parameter or in the Authorization header. You can filter users by their badge type or their exact point total.
+</p>
 
-The users endpoint accepts an access token through either the required `access_token` query parameter or an `Authorization: Bearer` header.
+<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 6px; overflow-x: auto; margin: 1.5rem 0;">
+<pre style="margin: 0; font-family: monospace; font-size: 0.9rem; color: #24292e;">GET /api/users?access_token={token}&type=top-fan
+GET /api/users?access_token={token}&points=3000</pre>
+</div>
 
-### Get users
+<p style="line-height: 1.8; color: #333; margin-bottom: 1rem;">
+    For comments, users can fetch the entire list, create a new one, and like or unlike individual comments. They are also able to delete their own comments. These routes are protected by Sanctum, meaning only authenticated users can use them.
+</p>
 
-```http
-GET /api/users?access_token=YOUR_TOKEN
-```
+<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 6px; overflow-x: auto; margin: 1.5rem 0;">
+<pre style="margin: 0; font-family: monospace; font-size: 0.9rem; color: #24292e;">GET    /api/comments
+POST   /api/comments
+DELETE /api/comments/{id}
+POST   /api/comments/{id}/like
+DELETE /api/comments/{id}/like</pre>
+</div>
 
-### Filters
+<p style="line-height: 1.8; color: #333; margin-bottom: 1.5rem;">
+    There is also a simple endpoint to generate a temporary test token if you want to test the API without setting up a full authentication flow.
+</p>
 
-```http
-GET /api/users?access_token=YOUR_TOKEN&type=top-fan
-GET /api/users?access_token=YOUR_TOKEN&points=3000
-```
+<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 6px; overflow-x: auto; margin: 1.5rem 0;">
+<pre style="margin: 0; font-family: monospace; font-size: 0.9rem; color: #24292e;">GET /api/token</pre>
+</div>
 
-`type` filters by badge type. `points` filters by the user's exact point total.
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">Testing the Application</h2>
 
-Example response:
+<p style="line-height: 1.8; color: #333; margin-bottom: 1.5rem;">
+    I wrote feature tests to verify the reward milestones, badge calculations, API filters, and ownership rules. You can run the entire suite using the standard artisan command.
+</p>
 
-```json
-{
-  "data": [
-    {
-      "id": 4,
-      "name": "Kevin Talla",
-      "email": "kevin@example.com",
-      "points": 3000,
-      "badge": "top-fan",
-      "next_badge": "super-fan",
-      "comments_count": 30,
-      "likes_count": 10
-    }
-  ]
-}
-```
+<div style="background: #f6f8fa; padding: 1.5rem; border-radius: 6px; overflow-x: auto; margin: 1.5rem 0;">
+<pre style="margin: 0; font-family: monospace; font-size: 0.9rem; color: #24292e;">php artisan test</pre>
+</div>
 
-A missing or invalid token returns `401 Unauthorized`.
+<h2 style="font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">A Few Implementation Notes</h2>
 
-### Other endpoints
+<p style="line-height: 1.8; color: #333; margin-bottom: 1rem;">
+    The seed data includes a user named Kevin Talla who has exactly 30 comments and 10 likes. This puts him at 3,000 total points, making him a top-fan with the super-fan badge as his next goal. I stuck to the three explicitly defined badges from the assessment: beginner-badge, top-fan, and super-fan. I also decided that likes remain counted toward a user's total points even if they later unlike a comment, since the milestone was already achieved.
+</p>
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/comments` | List comments |
-| POST | `/api/comments` | Add a comment |
-| DELETE | `/api/comments/{id}` | Delete the user's own comment |
-| POST | `/api/comments/{id}/like` | Like a comment |
-| DELETE | `/api/comments/{id}/like` | Unlike a comment |
+<hr style="border: 0; border-top: 2px solid #eee; margin: 2.5rem 0;">
 
-Protected comment and like routes use a Sanctum bearer token.
+<p style="text-align: center; font-size: 0.95rem; color: #666; margin-top: 2rem;">
+    <strong>Author:</strong> Millenian N. Ngangmi
+</p>
 
-### Assessment access token
-
-The demo includes a simple token endpoint so the seeded application can be tested quickly:
-
-```bash
-curl http://localhost:8000/api/token
-```
-
-The returned token can be supplied to the users endpoint or as a bearer token for the protected comment and like routes.
-
-This endpoint is included for the technical-test demo. In a production application, token issuance would be handled through the application's normal authentication flow.
-
-## Testing
-
-Run:
-
-```bash
-php artisan test
-```
-
-The feature tests cover:
-
-- first comment reward
-- 30-comment milestone
-- 50-comment milestone
-- 10-like reward
-- badge calculation from points
-- next badge calculation
-- missing and invalid access tokens
-- `type` and `points` API filters
-- comment creation
-- duplicate likes
-- unlike
-- comment deletion
-- ownership checks
-
-## Seed Data
-
-The seeder uses named users and varied comment text so the application has useful content when it starts instead of an empty or repetitive feed.
-
-The seeded users cover the main reward states. Kevin Talla has 30 comments and 10 likes, giving him **3,000 points**, a **top-fan** badge, and **super-fan** as his next badge.
-
-## Assumptions
-
-1. The assessment mentions four badges but only defines three named badges: beginner-badge, top-fan, and super-fan. No additional badge was invented.
-2. The detailed task describes likes on comments, so this implementation uses comments rather than introducing a separate post system.
-3. Comment milestones are awarded once when the user reaches the specified count and the milestone values represent the total points earned from comments at that stage.
-4. Like rewards are awarded at the 10-like milestone and remain part of the user's earned points even if a like is later removed.
-5. Users can only delete their own comments.
-6. A user cannot like the same comment more than once.
-7. `type` is the badge filter parameter requested by the assessment. `badge` is not required by the API.
-
-## Project Structure
-
-```text
-app/
-├── Http/
-│   ├── Controllers/
-│   └── Middleware/
-├── Models/
-└── Services/
-
-resources/
-├── js/
-└── scss/
-
-tests/
-└── Feature/
-```
-
-The reward rules are kept in `RewardService` so they are separate from the controllers and can be tested independently.
-
-## Contact
-
-**Millenian Ngu Ngangmi**  
-Email: millenianngu@gmail.com  
-GitHub: https://github.com/V-XY
-
-## License
-
-This project is submitted as part of a technical assessment for Waspito.
+</div>
