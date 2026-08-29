@@ -1,0 +1,5 @@
+import 'server-only';
+import crypto from 'node:crypto';
+import { supabaseAdmin } from '@/app/lib/supabase/admin';
+export async function createOrderAccessToken(tenantId:string,customerId:string,orderId:string){const token=crypto.randomBytes(32).toString('base64url');const hash=crypto.createHash('sha256').update(token).digest('hex');const {error}=await supabaseAdmin.from('customer_access_tokens').insert({tenant_id:tenantId,customer_id:customerId,order_id:orderId,token_hash:hash,purpose:'order_tracking',expires_at:new Date(Date.now()+30*86400000).toISOString()});if(error)throw error;return token;}
+export async function getOrderByAccessToken(token:string){const hash=crypto.createHash('sha256').update(token).digest('hex');const {data,error}=await supabaseAdmin.from('customer_access_tokens').select('*, orders(*,customers(*),order_items(*),payment_intents(*),kyc_submissions(*),activations(*))').eq('token_hash',hash).is('revoked_at',null).gt('expires_at',new Date().toISOString()).maybeSingle();if(error||!data?.orders)throw new Error('INVALID_ACCESS_TOKEN');return data.orders;}
