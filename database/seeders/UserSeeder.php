@@ -1,14 +1,14 @@
 <?php
 
-namespace Database\\Seeders;
+namespace Database\Seeders;
 
-use App\\Models\\Comment;
-use App\\Models\\Like;
-use App\\Models\\User;
-use App\\Services\\RewardService;
-use Illuminate\\Database\\Seeder;
-use Illuminate\\Support\\Facades\\Hash;
-use Illuminate\\Support\\Str;
+use App\Models\Comment;
+use App\Models\Like;
+use App\Models\User;
+use App\Services\RewardService;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
