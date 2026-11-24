@@ -48,15 +48,17 @@ class RewardsApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['text']);
 
+        $maximumLengthText = str_repeat('x', 1000);
+
         $this->withToken($token)
-            ->postJson('/api/comments', ['text' => 'A valid comment'])
+            ->postJson('/api/comments', ['text' => $maximumLengthText])
             ->assertCreated()
-            ->assertJsonPath('comment.text', 'A valid comment')
+            ->assertJsonPath('comment.text', $maximumLengthText)
             ->assertJsonPath('comment.user_id', $user->id);
 
         $this->assertDatabaseHas('comments', [
             'user_id' => $user->id,
-            'text' => 'A valid comment',
+            'text' => $maximumLengthText,
         ]);
 
         $this->assertSame(50, $user->fresh()->points);
@@ -136,6 +138,27 @@ class RewardsApiTest extends TestCase
 
         $this->assertDatabaseCount('likes', 9);
         $this->assertSame(500, $user->fresh()->points);
+    }
+
+    public function test_comments_feed_includes_author_like_count_and_viewer_like_state(): void
+    {
+        $author = User::factory()->create();
+        $viewer = User::factory()->create();
+        $comment = Comment::create([
+            'user_id' => $author->id,
+            'text' => 'A comment with a like',
+        ]);
+
+        $comment->likes()->create(['user_id' => $viewer->id]);
+        $token = $viewer->createToken('feed-viewer')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/comments')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $comment->id)
+            ->assertJsonPath('data.0.user.id', $author->id)
+            ->assertJsonPath('data.0.likes_count', 1)
+            ->assertJsonPath('data.0.liked_by_user', true);
     }
 
     public function test_users_endpoint_accepts_a_bearer_token_and_does_not_expose_credentials(): void
