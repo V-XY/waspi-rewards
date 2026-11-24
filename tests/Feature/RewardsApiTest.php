@@ -218,6 +218,64 @@ class RewardsApiTest extends TestCase
             ->assertJsonPath('meta.authenticated_user_id', $demoUser->id);
     }
 
+    public function test_query_string_tokens_are_not_accepted(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('query-token')->plainTextToken;
+
+        $this->getJson('/api/users?access_token='.$token)
+            ->assertUnauthorized();
+    }
+
+    public function test_demo_token_endpoint_is_disabled_by_default(): void
+    {
+        config(['waspi.demo_access_enabled' => false]);
+
+        $this->postJson('/api/demo-token')->assertNotFound();
+        $this->getJson('/api/token')->assertNotFound();
+    }
+
+    public function test_demo_token_endpoint_requires_the_configured_demo_account(): void
+    {
+        config([
+            'waspi.demo_access_enabled' => true,
+            'waspi.demo_user_email' => 'demo@waspi-rewards.test',
+        ]);
+
+        $this->postJson('/api/demo-token')->assertStatus(503);
+    }
+
+    public function test_demo_token_is_issued_only_for_the_configured_demo_account(): void
+    {
+        config([
+            'waspi.demo_access_enabled' => true,
+            'waspi.demo_user_email' => 'demo@waspi-rewards.test',
+        ]);
+
+        $ordinaryUser = User::factory()->create();
+        $demoUser = User::factory()->create(['email' => 'demo@waspi-rewards.test']);
+
+        $response = $this->postJson('/api/demo-token')->assertOk();
+        $this->assertSame(3600, $response->json('expires_in'));
+
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'tokenable_type' => User::class,
+            'tokenable_id' => $demoUser->id,
+            'name' => 'public-demo',
+        ]);
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_type' => User::class,
+            'tokenable_id' => $ordinaryUser->id,
+            'name' => 'public-demo',
+        ]);
+
+        $this->withToken($response->json('token'))
+            ->getJson('/api/users')
+            ->assertOk()
+            ->assertJsonPath('meta.authenticated_user_id', $demoUser->id);
+    }
+
     public function test_users_endpoint_accepts_a_bearer_token_and_does_not_expose_credentials(): void
     {
         $user = User::factory()->create(['points' => 3000]);
