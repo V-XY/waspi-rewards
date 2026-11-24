@@ -39,6 +39,7 @@ class UserController extends Controller
             'data' => $result,
             'meta' => [
                 'total' => $result->count(),
+                'authenticated_user_id' => $request->user()?->id,
                 'filters' => array_filter([
                     'type' => $type,
                     'points' => $request->input('points'),
