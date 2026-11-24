@@ -152,7 +152,7 @@ Tests should cover the reward rules, including:
 
 The application provides a GET endpoint for listing users.
 
-The endpoint requires an `access_token`.
+The endpoint requires a bearer token in the `Authorization` header. Credentials are not accepted in query strings.
 
 Optional filters include:
 
@@ -164,20 +164,33 @@ The response also includes the next badge a user is eligible to receive.
 Example:
 
 ```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN
+GET /api/users
 ```
 
 Example with filters:
 
 ```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN&type=top-fan
+GET /api/users?type=top-fan
 ```
 
 ```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN&points=3000
+GET /api/users?points=3000
 ```
 
-An invalid or missing access token should not return the user data.
+Send the token as `Authorization: Bearer YOUR_ACCESS_TOKEN`. An invalid or missing token must not return user data.
+
+### Public demonstration access
+
+A controlled demonstration token can be enabled for a dedicated seeded account. It is disabled by default.
+
+Set these deployment variables only when the public demonstration is intended to be available:
+
+```text
+WASPI_DEMO_ACCESS_ENABLED=true
+WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test
+```
+
+Run the database seeder so the configured demo account exists. The `POST /api/demo-token` endpoint issues a one-hour token for that account only and is rate limited. It never issues a token for the first or an arbitrary database user.
 
 ## Seed Data
 
