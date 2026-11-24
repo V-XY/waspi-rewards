@@ -100,3 +100,42 @@ jobs:
           echo "$api_response" | jq -e '.data | length > 0' >/dev/null
 
           docker rm --force waspi-rewards-smoke
+
+      - name: Verify hosted assessment preview
+        env:
+          PREVIEW_URL: https://waspi-rewards-assessment.onrender.com
+        run: |
+          for attempt in $(seq 1 36); do
+            status="$(curl --silent --show-error --output /tmp/preview-health --write-out '%{http_code}' "$PREVIEW_URL/up" || true)"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          test "$status" = "200"
+
+          page="$(curl --fail --silent --show-error "$PREVIEW_URL/")"
+          echo "$page" | grep -q '<title>WASPI Rewards</title>'
+
+          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\\.js"' | head -n 1 | cut -d '"' -f 2)"
+          test -n "$asset_path"
+
+          case "$asset_path" in
+            http://*|https://*) asset_url="$asset_path" ;;
+            *) asset_url="$PREVIEW_URL$asset_path" ;;
+          esac
+          curl --fail --silent --show-error "$asset_url" >/dev/null
+
+          token="$(curl --fail --silent --show-error \
+            --request POST "$PREVIEW_URL/api/demo-token" | jq -er '.token')"
+
+          users="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$PREVIEW_URL/api/users")"
+          echo "$users" | jq -e '.meta.authenticated_user_id != null and (.data | length >= 6)' >/dev/null
+
+          comments="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$PREVIEW_URL/api/comments")"
+          echo "$comments" | jq -e '.data | length > 0' >/dev/null
