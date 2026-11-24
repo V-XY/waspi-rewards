@@ -139,6 +139,36 @@ class RewardsApiTest extends TestCase
         $this->assertDatabaseCount('likes', 9);
     }
 
+    public function test_unliking_and_reliking_does_not_award_the_tenth_like_reward_twice(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $token = $user->createToken('api-test')->plainTextToken;
+        $comments = collect(range(1, 10))->map(fn (int $number) => Comment::create([
+            'user_id' => $owner->id,
+            'text' => "Comment {$number}",
+        ]));
+
+        foreach ($comments as $comment) {
+            $this->withToken($token)
+                ->postJson("/api/comments/{$comment->id}/like")
+                ->assertCreated();
+        }
+
+        $this->assertSame(500, $user->fresh()->points);
+
+        $this->withToken($token)
+            ->deleteJson("/api/comments/{$comments->first()->id}/like")
+            ->assertOk();
+
+        $this->withToken($token)
+            ->postJson("/api/comments/{$comments->first()->id}/like")
+            ->assertCreated();
+
+        $this->assertSame(500, $user->fresh()->points);
+        $this->assertDatabaseCount('reward_grants', 1);
+    }
+
     public function test_comments_feed_includes_author_like_count_and_viewer_like_state(): void
     {
         $author = User::factory()->create();
