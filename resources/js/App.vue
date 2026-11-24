@@ -81,22 +81,21 @@ export default {
   },
   mounted() {
     this.token = localStorage.getItem('token');
-    if (!this.token) {
-      this.getToken();
-    } else {
-      this.fetchData();
-    }
+    this.fetchData();
   },
   methods: {
     async getToken() {
-      try {
-        const res = await axios.post('/api/demo-token');
-        this.token = res.data.token;
-        localStorage.setItem('token', this.token);
-        this.fetchData();
-      } catch (e) {
-        console.error('Token fetch failed:', e);
-      }
+      const response = await axios.post('/api/demo-token');
+      this.token = response.data.token;
+      localStorage.setItem('token', this.token);
+    },
+    applyData(users, comments) {
+      const records = users.data.data || [];
+      this.user = records.find((item) => item.id === users.data.meta?.authenticated_user_id) || null;
+      this.leaderboard = [...records]
+        .sort((a, b) => b.points - a.points)
+        .slice(0, 5);
+      this.comments = comments.data.data || [];
     },
     async fetchData() {
       if (this.isLoading) return;
@@ -105,28 +104,34 @@ export default {
       try {
         if (!this.token) {
           await this.getToken();
-          return;
         }
 
         const config = { headers: { Authorization: `Bearer ${this.token}` } };
+        const [users, comments] = await Promise.all([
+          axios.get('/api/users', config),
+          axios.get('/api/comments', config),
+        ]);
 
-        const users = await axios.get('/api/users', config);
-        if (users.data.data.length) {
-          this.user = users.data.data.find((item) => item.id === users.data.meta?.authenticated_user_id) || null;
-          // Sort by points descending for leaderboard
-          this.leaderboard = [...users.data.data]
-            .sort((a, b) => b.points - a.points)
-            .slice(0, 5);
-        }
-
-        const comments = await axios.get('/api/comments', config);
-        this.comments = comments.data.data || [];
-      } catch (e) {
-        console.error('Data fetch failed:', e);
-        if (e.response?.status === 401) {
+        this.applyData(users, comments);
+      } catch (error) {
+        if (error.response?.status === 401) {
           localStorage.removeItem('token');
           this.token = null;
-          this.getToken();
+
+          try {
+            await this.getToken();
+            const config = { headers: { Authorization: `Bearer ${this.token}` } };
+            const [users, comments] = await Promise.all([
+              axios.get('/api/users', config),
+              axios.get('/api/comments', config),
+            ]);
+
+            this.applyData(users, comments);
+          } catch (refreshError) {
+            console.error('Session refresh failed:', refreshError);
+          }
+        } else {
+          console.error('Data fetch failed:', error);
         }
       } finally {
         this.isLoading = false;
