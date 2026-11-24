@@ -18,6 +18,8 @@ services:
     healthCheckPath: /up
     autoDeployTrigger: checksPass
     envVars:
+      - key: APP_NAME
+        value: WASPI Rewards
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
