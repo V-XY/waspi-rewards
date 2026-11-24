@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: waspi-rewards-assessment
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: test/harden-rewards-suite
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://waspi-rewards-assessment.onrender.com
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        sync: false
+      - key: SESSION_DRIVER
+        value: array
+      - key: CACHE_STORE
+        value: array
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: RUN_DATABASE_SETUP
+        value: "true"
+      - key: WASPI_DEMO_ACCESS_ENABLED
+        value: "true"
+      - key: WASPI_DEMO_USER_EMAIL
+        value: demo@waspi-rewards.test
