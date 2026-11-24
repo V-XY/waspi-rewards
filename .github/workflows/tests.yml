@@ -47,3 +47,6 @@ jobs:
 
       - name: Build frontend assets
         run: npm run build
+
+      - name: Build Docker image
+        run: docker build --tag waspi-rewards:ci .
