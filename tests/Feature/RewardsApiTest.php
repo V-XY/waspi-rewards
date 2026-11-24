@@ -159,6 +159,21 @@ class RewardsApiTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_tokens_older_than_the_configured_sanctum_lifetime_are_rejected(): void
+    {
+        config(['sanctum.expiration' => 60]);
+
+        $user = User::factory()->create();
+        $createdToken = $user->createToken('stale-token');
+        $createdToken->accessToken->forceFill([
+            'created_at' => now()->subHours(2),
+        ])->save();
+
+        $this->withToken($createdToken->plainTextToken)
+            ->getJson('/api/users')
+            ->assertUnauthorized();
+    }
+
     public function test_unknown_comment_returns_not_found_for_like_actions(): void
     {
         $user = User::factory()->create();
