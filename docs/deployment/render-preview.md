@@ -38,7 +38,7 @@ The database bootstrap is repeat-safe. Migrations run on startup, the demo accou
 
 ## Verification
 
-GitHub Actions verifies the PHP test suite, npm dependency audit, Vite production build, Docker image build and a container smoke test. The container smoke test checks:
+GitHub Actions verifies the PHP test suite, npm dependency audit, Vite production build, Docker image build, a container smoke test and the live assessment preview. The container smoke test checks:
 
 - Laravel health endpoint.
 - Rendered application page and compiled Vue asset.
@@ -46,7 +46,9 @@ GitHub Actions verifies the PHP test suite, npm dependency audit, Vite productio
 - Authenticated users API and authenticated-user metadata.
 - PostgreSQL PHP driver availability.
 
-Render's own deployment checks confirm that the hosted service starts and that `/up` returns HTTP 200. The initial hosted boot also completed PostgreSQL migrations and the seed operation.
+The hosted-preview check waits for Render to wake the service, then verifies the live health endpoint, page title, compiled JavaScript asset, demo-token endpoint, authenticated users data and comments feed. It is read-only and does not alter the seeded demo data.
+
+Render's own deployment checks also confirm that the hosted service starts and that `/up` returns HTTP 200. The initial hosted boot also completed PostgreSQL migrations and the seed operation.
 
 A full manual browser walkthrough of adding a comment, liking it and reloading to confirm persistence remains the final assessor-facing interaction check.
 
