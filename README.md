@@ -4,7 +4,7 @@ WASPI Rewards is a Laravel and Vue application for tracking user activity, point
 
 ## Stack
 
-- Laravel 12 and PHP 8.4
+- Laravel 13 and PHP 8.4
 - Vue 3 with Vite
 - PostgreSQL for hosted data; SQLite for local development
 - Laravel Sanctum personal access tokens
@@ -134,4 +134,4 @@ php artisan test
 
 GitHub Actions also audits npm dependencies, builds the frontend and Docker image, then smoke-tests the container, health endpoint, page, compiled assets, demo-token endpoint and authenticated API.
 
-The hosted PostgreSQL deployment and browser interaction checks must be verified separately after deployment.
+The assessment preview is deployed separately from the existing service. The deployment guide records the hosting limits and verification steps.
