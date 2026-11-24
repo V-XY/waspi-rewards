@@ -89,23 +89,27 @@ class RewardsApiTest extends TestCase
         $this->assertSame(500, $user->fresh()->points);
     }
 
-    public function test_comment_owner_can_delete_comment_but_another_user_cannot(): void
+    public function test_another_user_cannot_delete_a_comment(): void
     {
         $owner = User::factory()->create();
         $otherUser = User::factory()->create();
         $comment = Comment::create(['user_id' => $owner->id, 'text' => 'Owned comment']);
+        $token = $otherUser->createToken('other-user')->plainTextToken;
 
-        $otherToken = $otherUser->createToken('other-user')->plainTextToken;
-
-        $this->withToken($otherToken)
+        $this->withToken($token)
             ->deleteJson("/api/comments/{$comment->id}")
             ->assertForbidden();
 
         $this->assertDatabaseHas('comments', ['id' => $comment->id]);
+    }
 
-        $ownerToken = $owner->createToken('owner')->plainTextToken;
+    public function test_comment_owner_can_delete_their_comment(): void
+    {
+        $owner = User::factory()->create();
+        $comment = Comment::create(['user_id' => $owner->id, 'text' => 'Owned comment']);
+        $token = $owner->createToken('owner')->plainTextToken;
 
-        $this->withToken($ownerToken)
+        $this->withToken($token)
             ->deleteJson("/api/comments/{$comment->id}")
             ->assertOk();
 
