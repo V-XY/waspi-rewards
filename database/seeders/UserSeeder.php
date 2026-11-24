@@ -1,14 +1,14 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\\Seeders;
 
-use App\Models\Comment;
-use App\Models\Like;
-use App\Models\User;
-use App\Services\RewardService;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use App\\Models\\Comment;
+use App\\Models\\Like;
+use App\\Models\\User;
+use App\\Services\\RewardService;
+use Illuminate\\Database\\Seeder;
+use Illuminate\\Support\\Facades\\Hash;
+use Illuminate\\Support\\Str;
 
 class UserSeeder extends Seeder
 {
@@ -21,6 +21,12 @@ class UserSeeder extends Seeder
                 'password' => Hash::make(Str::random(40)),
             ]
         );
+
+        // The hosted preview runs seeders on container restarts. Use a stable
+        // sentinel account so the assessment dataset is created only once.
+        if (User::where('email', 'maxime@example.com')->exists()) {
+            return;
+        }
 
         $rewardService = new RewardService();
 
