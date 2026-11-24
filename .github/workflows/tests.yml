@@ -118,7 +118,7 @@ jobs:
           page="$(curl --fail --silent --show-error "$PREVIEW_URL/")"
           echo "$page" | grep -q '<title>WASPI Rewards</title>'
 
-          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\\.js"' | head -n 1 | cut -d '"' -f 2)"
+          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d '"' -f 2)"
           test -n "$asset_path"
 
           case "$asset_path" in
