@@ -19,7 +19,15 @@ class AuthenticateWithAccessToken
 
         $accessToken = PersonalAccessToken::findToken($token);
 
-        if (!$accessToken || !$accessToken->tokenable) {
+        if (
+            !$accessToken
+            || !$accessToken->tokenable
+            || ($accessToken->expires_at && $accessToken->expires_at->isPast())
+            || (
+                config('sanctum.expiration')
+                && $accessToken->created_at->lte(now()->subMinutes(config('sanctum.expiration')))
+            )
+        ) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
