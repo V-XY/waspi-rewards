@@ -34,7 +34,7 @@ Neon Free currently includes 1 GB of storage per project and 100 compute-hours p
 6. Render should detect the root `render.yaml` Blueprint.
 7. Confirm the web service plan is **Free**. Do not add paid resources.
 
-If Render asks for `DB_URL`, paste the Neon pooled connection string. The Blueprint generates `APP_KEY` for the service. Do not reuse a local application key.
+If Render asks for `DB_URL`, paste the Neon pooled connection string. When prompted for `APP_KEY`, generate a Laravel-formatted key locally with `php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'` and paste the result. Do not reuse an application key from another environment.
 
 The Blueprint pins deployment to the assessment branch. It does not deploy `main`.
 
