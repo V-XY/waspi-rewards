@@ -7,7 +7,7 @@ A Laravel and Vue.js application implementing the WASPI Rewards point and badge 
 - PHP 8.4+
 - Composer
 - Node.js and npm
-- SQLite or another supported database
+- SQLite or PostgreSQL
 
 ## Local Installation
 
@@ -58,7 +58,7 @@ Start the Laravel development server:
 php artisan serve
 ```
 
-## Docker Deployment
+## Docker
 
 Build the image:
 
@@ -70,27 +70,37 @@ Run it with a runtime application key:
 
 ```bash
 docker run --detach --name waspi-rewards \
-  --publish 8080:80 \
+  --publish 8080:10000 \
   --env APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')" \
   waspi-rewards
 ```
 
-The container defaults to production mode, disables debug output, and uses file-backed sessions/cache with a synchronous queue. Supply a unique `APP_KEY` at runtime. Never bake secrets into the image.
+The container listens on port `10000`, serves Laravel from `public/`, and builds the Vue/Vite assets during image construction. It defaults to production mode with debug output disabled. Supply a unique `APP_KEY` at runtime; never bake secrets into the image.
 
-The container's SQLite database is located at `/var/www/html/database/database.sqlite`. The image contains an empty database file; migrations and seed data are not run during image construction. For a disposable assessment demo, initialise the database after the container starts:
+The image uses SQLite by default for local container testing. Its database is not durable when the container is replaced. For a persistent deployment, configure PostgreSQL through `DB_CONNECTION=pgsql` and `DB_URL`, or use a genuinely persistent volume for SQLite.
 
-```bash
-docker exec waspi-rewards php artisan migrate --force
-docker exec waspi-rewards php artisan db:seed --force
-```
+The optional `RUN_DATABASE_SETUP=true` setting runs pending migrations and the database seeder before Apache starts. It is intended for the isolated hosted assessment environment. The sample-data seeder is repeat-safe, so container restarts do not continually duplicate the sample comments and likes. For a normal production deployment, run migrations as a controlled release step instead.
 
-For any deployment where data must survive container replacement, mount persistent storage at `/var/www/html/database` or configure a managed PostgreSQL/MySQL database. A container-local SQLite file is not durable storage on platforms that replace containers or use ephemeral filesystems. Back up persistent data and run migrations as a release step before serving traffic.
+## Free Hosted Assessment Preview (Render + Neon)
 
-The container exposes port `80`. Apache serves Laravel from the `public` directory.
+The repository includes a Render Blueprint in `render.yaml`. It is configured to deploy only the `test/harden-rewards-suite` branch on Render's Free web-service plan.
+
+The hosted preview uses:
+
+- Render Free Docker web service for the Laravel application.
+- Neon Free PostgreSQL for durable relational data.
+- A generated Laravel application key.
+- A dedicated seeded demonstration account.
+- Startup migrations and one-time sample-data seeding.
+- The `/up` health endpoint.
+
+Setup instructions, environment variables, free-tier limits, and the demonstration flow are documented in [the Render preview guide](docs/deployment/render-preview.md).
+
+This is a demonstration environment, not production hosting. Render free services sleep after 15 minutes without traffic and can take about a minute to wake. Their local filesystem is ephemeral, so the database must remain external. Do not use Render's free PostgreSQL for this long-lived preview because Render deletes free PostgreSQL databases after 30 days.
 
 ## Environment Configuration
 
-Minimum runtime settings:
+Minimum runtime settings for a conventional deployment:
 
 ```text
 APP_ENV=production
@@ -98,15 +108,15 @@ APP_DEBUG=false
 APP_KEY=your-generated-laravel-key
 APP_URL=https://your-deployment-host
 
-DB_CONNECTION=sqlite
-DB_DATABASE=/var/www/html/database/database.sqlite
+DB_CONNECTION=pgsql
+DB_URL=your-postgresql-connection-string
 
-SESSION_DRIVER=file
-CACHE_STORE=file
+SESSION_DRIVER=array
+CACHE_STORE=array
 QUEUE_CONNECTION=sync
 ```
 
-Keep any additional environment variables required by the application. Use a managed database and its connection variables when deploying beyond a disposable demonstration.
+Keep any additional environment variables required by the application. Store secrets in the hosting provider's environment settings, never in source control.
 
 ## Controlled Public Demonstration
 
@@ -131,7 +141,7 @@ Run the application test suite:
 php artisan test
 ```
 
-The GitHub Actions workflow also installs frontend dependencies, audits the dependency tree, builds the Vue/Vite assets, builds the Docker image, starts the container, applies migrations and seed data, and checks the rendered page, compiled JavaScript asset, demo-token endpoint, and authenticated users API.
+The GitHub Actions workflow installs frontend dependencies, audits the dependency tree, builds the Vue/Vite assets and Docker image, starts the container with database bootstrap enabled, and checks the health endpoint, rendered page, compiled JavaScript asset, demo-token endpoint, and authenticated users API.
 
 ## API
 
@@ -182,6 +192,7 @@ routes/
 
 public/
 Dockerfile
+render.yaml
 package.json
 composer.json
 vite.config.js
