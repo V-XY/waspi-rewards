@@ -43,7 +43,7 @@ RUN composer install \
 # Install frontend dependencies and build Vite assets
 RUN npm ci && npm run build
 
-# Create SQLite database if it does not already exist
+# Create SQLite database file. Mount persistent storage here if SQLite is used.
 RUN mkdir -p database \
     && touch database/database.sqlite
 
@@ -57,6 +57,15 @@ RUN chmod -R 775 \
     storage \
     bootstrap/cache \
     database
+
+# Safe container defaults. APP_KEY must be supplied at runtime.
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    DB_CONNECTION=sqlite \
+    DB_DATABASE=/var/www/html/database/database.sqlite \
+    SESSION_DRIVER=file \
+    CACHE_STORE=file \
+    QUEUE_CONNECTION=sync
 
 # Apache configuration
 RUN a2enmod rewrite
