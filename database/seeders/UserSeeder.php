@@ -7,12 +7,20 @@ use App\Models\Like;
 use App\Models\User;
 use App\Services\RewardService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(\n            ['email' => config('waspi.demo_user_email')],\n            [\n                'name' => 'Demo User',\n                'password' => Hash::make(Str::random(40)),\n            ]\n        );\n\n        $rewardService = new RewardService();
+        User::firstOrCreate(
+            ['email' => config('waspi.demo_user_email')],
+            [
+                'name' => 'Demo User',
+                'password' => Hash::make(Str::random(40)),
+            ]
+        );\n\n        $rewardService = new RewardService();
 
         $users = [
             User::factory()->create(['name' => 'Maxime Heidenreich V', 'email' => 'maxime@example.com']),
