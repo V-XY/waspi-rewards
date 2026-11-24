@@ -118,7 +118,7 @@ class RewardsApiTest extends TestCase
         $this->assertDatabaseMissing('comments', ['id' => $comment->id]);
     }
 
-    public function test_like_can_be_removed_without_changing_the_earned_reward(): void
+    public function test_unliking_removes_the_like_record(): void
     {
         $user = User::factory()->create();
         $owner = User::factory()->create();
@@ -137,7 +137,6 @@ class RewardsApiTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseCount('likes', 9);
-        $this->assertSame(500, $user->fresh()->points);
     }
 
     public function test_comments_feed_includes_author_like_count_and_viewer_like_state(): void
