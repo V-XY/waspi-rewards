@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <div class="container">
-      <!-- Sticky Header -->
       <header class="header">
         <h1 class="logo">WASPI REWARDS</h1>
         <div v-if="user" class="profile">
@@ -12,7 +11,6 @@
         </div>
       </header>
 
-      <!-- Leaderboard -->
       <div v-if="leaderboard.length" class="leaderboard">
         <h2>🏆 Top Users</h2>
         <div v-for="(user, index) in leaderboard" :key="user.id" class="rank-item">
@@ -25,7 +23,6 @@
 
       <button class="add-btn" @click="showModal">+ Add Comment</button>
 
-      <!-- Comments Feed -->
       <div class="feed">
         <div v-for="comment in comments" :key="comment.id" class="post">
           <div class="post-header">
@@ -49,7 +46,6 @@
         <p v-if="!comments.length" class="empty">No comments yet. Be the first!</p>
       </div>
 
-      <!-- Modal -->
       <div v-if="isModalOpen" class="modal-overlay" @click.self="hideModal">
         <div class="modal">
           <h2>Add Comment</h2>
