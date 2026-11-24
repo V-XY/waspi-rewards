@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libsqlite3-dev \
+    libpq-dev \
     zip \
     unzip \
     nodejs \
@@ -18,6 +19,7 @@ RUN apt-get update && apt-get install -y \
 # PHP extensions
 RUN docker-php-ext-install \
     pdo_mysql \
+    pdo_pgsql \
     pdo_sqlite \
     mbstring \
     exif \
@@ -43,7 +45,7 @@ RUN composer install \
 # Install frontend dependencies and build Vite assets
 RUN npm ci && npm run build
 
-# Create SQLite database file. Mount persistent storage here if SQLite is used.
+# Create SQLite database file for local/container smoke tests.
 RUN mkdir -p database \
     && touch database/database.sqlite
 
@@ -63,12 +65,15 @@ ENV APP_ENV=production \
     APP_DEBUG=false \
     DB_CONNECTION=sqlite \
     DB_DATABASE=/var/www/html/database/database.sqlite \
-    SESSION_DRIVER=file \
-    CACHE_STORE=file \
-    QUEUE_CONNECTION=sync
+    SESSION_DRIVER=array \
+    CACHE_STORE=array \
+    QUEUE_CONNECTION=sync \
+    RUN_DATABASE_SETUP=false
 
 # Apache configuration
-RUN a2enmod rewrite
+RUN a2enmod rewrite \
+    && sed -ri 's/^Listen 80$/Listen 10000/' /etc/apache2/ports.conf \
+    && sed -ri 's/<VirtualHost \*:80>/<VirtualHost *:10000>/' /etc/apache2/sites-available/*.conf
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
@@ -86,6 +91,10 @@ RUN sed -ri \
     '/<Directory \/var\/www\/html\/public>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
     /etc/apache2/apache2.conf
 
-EXPOSE 80
+COPY docker/container-entrypoint.sh /usr/local/bin/container-entrypoint
+RUN chmod +x /usr/local/bin/container-entrypoint
 
+EXPOSE 10000
+
+ENTRYPOINT ["/usr/local/bin/container-entrypoint"]
 CMD ["apache2-foreground"]
