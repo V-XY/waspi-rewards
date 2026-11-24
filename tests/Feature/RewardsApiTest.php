@@ -14,7 +14,7 @@ class RewardsApiTest extends TestCase
 
     public function test_comment_routes_reject_requests_without_authentication(): void
     {
-        $comment = Comment::factory()->create();
+        $comment = Comment::create(['user_id' => User::factory()->create()->id, 'text' => 'Test comment']);
 
         $this->getJson('/api/comments')->assertUnauthorized();
         $this->postJson('/api/comments', ['text' => 'A comment'])->assertUnauthorized();
