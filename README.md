@@ -1,248 +1,137 @@
 # WASPI Rewards
 
-A Laravel and Vue.js application implementing the WASPI Rewards point and badge system.
+WASPI Rewards is a Laravel and Vue application for tracking user activity, points, badges and a shared comments feed.
 
-## Requirements
+## Stack
 
-- PHP 8.4+
-- Composer
-- Node.js and npm
-- SQLite or another supported database
+- Laravel 13 and PHP 8.4
+- Vue 3 with Vite
+- PostgreSQL for hosted data; SQLite for local development
+- Laravel Sanctum personal access tokens
+- Docker and Apache
 
-## Local Installation
+## Local development
 
-Clone the repository:
+Requirements: PHP 8.4+, Composer, Node.js, npm and SQLite or PostgreSQL.
 
 ```bash
 git clone https://github.com/V-XY/waspi-rewards.git
 cd waspi-rewards
-```
-
-Install PHP dependencies:
-
-```bash
 composer install
-```
-
-Create the environment file:
-
-```bash
 cp .env.example .env
-```
-
-Generate the application key:
-
-```bash
 php artisan key:generate
 ```
 
-Configure the database in `.env`.
-
-For SQLite, create the database file:
+Configure the database in `.env`. For SQLite, create the database file:
 
 ```bash
 touch database/database.sqlite
-```
-
-Run migrations and seed the database:
-
-```bash
 php artisan migrate --seed
 ```
 
-Install frontend dependencies:
+Install the frontend dependencies and start the development server:
 
 ```bash
-npm install
-```
-
-Build the frontend:
-
-```bash
+npm ci
 npm run build
-```
-
-Start the Laravel development server:
-
-```bash
 php artisan serve
 ```
 
-The application will then be available at the local address shown by Laravel.
+## Docker
 
-## Production Build
+Build and run the image with a unique application key:
 
-The included Dockerfile handles the production build automatically.
-
-It:
-
-1. Installs PHP dependencies with Composer.
-2. Installs frontend dependencies with npm.
-3. Builds the Vue/Vite assets.
-4. Configures Apache to serve Laravel from the `public` directory.
-5. Sets the required Laravel permissions.
-
-The frontend build is generated during the Docker image build and does not need to be committed to the repository.
-
-## Database
-
-The application can use SQLite for the assessment environment.
-
-The SQLite database is located at:
-
-```text
-database/database.sqlite
+```bash
+docker build -t waspi-rewards .
+docker run --detach --name waspi-rewards \
+  --publish 8080:10000 \
+  --env APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')" \
+  waspi-rewards
 ```
 
-For a production environment, a persistent database such as PostgreSQL or MySQL would be recommended.
+The container listens on port `10000` and serves Laravel from `public/`. Vite assets are built during image construction. The image defaults to production mode with debug output disabled.
 
-## Deployment
+SQLite is the default for local container testing. Its data is not durable when the container is replaced. For a persistent deployment, configure PostgreSQL with `DB_CONNECTION=pgsql` and `DB_URL`.
 
-The application can be deployed as a Docker-based Laravel service.
+Set `RUN_DATABASE_SETUP=true` only for an isolated environment where the container is expected to run migrations and seed data at startup. In a production release process, run migrations as a controlled deployment step.
 
-The container exposes port:
+## Hosted assessment preview
 
-```text
-80
-```
+The assessment deployment is isolated on Render and uses:
 
-Apache serves Laravel using the `public` directory as the document root.
+- A Free Docker web service pinned to `test/harden-rewards-suite`.
+- A separate Free PostgreSQL database in Frankfurt.
+- A dedicated demo account and a one-hour demo token.
+- The Laravel `/up` health endpoint.
 
-### Environment Variables
+The deployment guide is in [docs/deployment/render-preview.md](docs/deployment/render-preview.md).
 
-Set the following environment variables in the deployment environment:
+Render's free web services sleep after inactivity and use an ephemeral filesystem. Its free PostgreSQL databases expire after 30 days. This environment is for assessment and demonstration, not production hosting or long-term data retention.
+
+## Environment
+
+A hosted deployment requires these settings:
 
 ```text
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=your-generated-laravel-key
 APP_URL=https://your-service.onrender.com
-
-DB_CONNECTION=sqlite
-DB_DATABASE=/var/www/html/database/database.sqlite
-
-SESSION_DRIVER=file
-CACHE_STORE=file
+DB_CONNECTION=pgsql
+DB_URL=your-postgresql-connection-string
+SESSION_DRIVER=array
+CACHE_STORE=array
 QUEUE_CONNECTION=sync
 ```
 
-Keep any additional environment variables required by the application.
+Keep secrets in the hosting provider's environment settings. Never commit application keys, database URLs or bearer tokens.
 
-## Testing
+## Demo access
 
-Run the application test suite with:
+Public demo access is disabled by default. Enable it only in an isolated demonstration environment:
+
+```text
+WASPI_DEMO_ACCESS_ENABLED=true
+WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test
+```
+
+The seeded demo account is the only account that can receive a token from the rate-limited `POST /api/demo-token` endpoint. Tokens expire after one hour. Do not enable this endpoint in an environment containing real user data.
+
+## API
+
+The users endpoint requires a bearer token:
+
+```http
+GET /api/users
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+Optional filters:
+
+- `type`: filter by badge type
+- `points`: filter by points
+
+Credentials must be sent in the Authorization header, not in query parameters.
+
+## Reward rules
+
+| Activity | Threshold | Points awarded |
+|---|---:|---:|
+| First comment | 1 comment | 50 |
+| Comments milestone | 30 comments | 2,450 |
+| Comments milestone | 50 comments | 2,500 |
+| Likes milestone | 10 likes | 500 |
+
+Each milestone is granted once per user. A database uniqueness constraint protects against duplicate awards.
+
+## Verification
+
+Run the automated tests with:
 
 ```bash
 php artisan test
 ```
 
-Tests should cover the reward rules, including:
+GitHub Actions also audits npm dependencies, builds the frontend and Docker image, then smoke-tests the container, health endpoint, page, compiled assets, demo-token endpoint and authenticated API.
 
-- First comment reward
-- 30-comment reward
-- 50+ comment reward
-- First 10 likes reward
-- Badge assignment
-- Point calculation
-- API authentication
-- API filtering
-- Next badge calculation
-
-## API
-
-The application provides a GET endpoint for listing users.
-
-The endpoint requires an `access_token`.
-
-Optional filters include:
-
-- `type` — filter users by badge type
-- `points` — filter users by points
-
-The response also includes the next badge a user is eligible to receive.
-
-Example:
-
-```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN
-```
-
-Example with filters:
-
-```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN&type=top-fan
-```
-
-```text
-GET /api/users?access_token=YOUR_ACCESS_TOKEN&points=3000
-```
-
-An invalid or missing access token should not return the user data.
-
-## Seed Data
-
-The database includes seed data for testing the reward system.
-
-The seed data can be recreated with:
-
-```bash
-php artisan migrate:fresh --seed
-```
-
-This resets the database and loads the predefined users, comments, likes, and related data.
-
-## Reward Rules
-
-| Action | Requirement | Points | Badge |
-|---|---:|---:|---|
-| First comment | 1 comment | 50 | Beginner |
-| Comments | 30 comments | 2,500 | Top Fan |
-| Comments | 50+ comments | 5,000 | Super Fan |
-| Likes | 10 likes | 500 | Beginner |
-
-The application also determines the next badge available to each user based on their current activity and points.
-
-## Project Structure
-
-```text
-app/
-├── Http/
-├── Models/
-└── ...
-
-database/
-├── migrations/
-└── seeders/
-
-resources/
-├── js/
-└── ...
-
-routes/
-├── api.php
-└── web.php
-
-public/
-└── ...
-
-Dockerfile
-package.json
-composer.json
-vite.config.js
-```
-
-## Notes
-
-The project was developed as a technical assessment for a Full Stack Developer position.
-
-The implementation focuses on:
-
-- Laravel backend development
-- Vue.js frontend development
-- REST API integration
-- Database relationships
-- Reward and badge logic
-- Authentication
-- Testing
-- Responsive UI
-- Production deployment
+The assessment preview is deployed separately from the existing service. The deployment guide records the hosting limits and verification steps.

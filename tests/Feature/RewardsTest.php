@@ -106,12 +106,14 @@ class RewardsTest extends TestCase
         User::factory()->create(['points' => 50]);
         $token = $topFan->createToken('test')->plainTextToken;
 
-        $this->getJson('/api/users?access_token='.$token.'&type=top-fan')
+        $this->withToken($token)
+            ->getJson('/api/users?type=top-fan')
             ->assertOk()
             ->assertJsonPath('data.0.id', $topFan->id)
             ->assertJsonPath('data.0.next_badge', 'super-fan');
 
-        $this->getJson('/api/users?access_token='.$token.'&points=3000')
+        $this->withToken($token)
+            ->getJson('/api/users?points=3000')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.points', 3000);

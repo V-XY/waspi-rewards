@@ -7,19 +7,35 @@ use App\Models\Like;
 use App\Models\User;
 use App\Services\RewardService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        User::firstOrCreate(
+            ['email' => config('waspi.demo_user_email')],
+            [
+                'name' => 'Demo User',
+                'password' => Hash::make(Str::random(40)),
+            ]
+        );
+
+        // The hosted preview runs seeders on container restarts. Use a stable
+        // sentinel account so the assessment dataset is created only once.
+        if (User::where('email', 'maxime@example.com')->exists()) {
+            return;
+        }
+
         $rewardService = new RewardService();
 
         $users = [
-            User::factory()->create(['name' => 'Maxime Heidenreich V', 'email' => 'maxime@example.com']),
-            User::factory()->create(['name' => 'Ms. Kelli Huels V', 'email' => 'kelli@example.com']),
-            User::factory()->create(['name' => 'Tito Daniel V', 'email' => 'tito@example.com']),
-            User::factory()->create(['name' => 'Kevin Talla V', 'email' => 'kevin@example.com']),
-            User::factory()->create(['name' => 'Sarah Njoya V', 'email' => 'sarah@example.com']),
+            $this->createUser('Maxime Heidenreich V', 'maxime@example.com'),
+            $this->createUser('Ms. Kelli Huels V', 'kelli@example.com'),
+            $this->createUser('Tito Daniel V', 'tito@example.com'),
+            $this->createUser('Kevin Talla V', 'kevin@example.com'),
+            $this->createUser('Sarah Njoya V', 'sarah@example.com'),
         ];
 
         $maximeComments = $this->addComments($users[0], [
@@ -92,8 +108,6 @@ class UserSeeder extends Seeder
             'The final result is much cleaner.',
         ], $rewardService);
 
-        // Kevin reaches 30 comments and 10 likes, totaling 3050 points.
-        // This demonstrates the 3000-point case from the assessment.
         $kevinComments = $this->addComments($users[3], [
             'I like the direction of this.',
             'The change is noticeable.',
@@ -180,8 +194,6 @@ class UserSeeder extends Seeder
             'Nice work.',
         ], $rewardService);
 
-        // Seed likes for all users to make the feed look populated.
-
         $kevinLikeable = Comment::where('user_id', '!=', $users[3]->id)
             ->whereNotIn('id', $kevinComments->pluck('id'))
             ->limit(10)
@@ -242,6 +254,17 @@ class UserSeeder extends Seeder
                 'comment_id' => $comment->id,
             ]);
         }
+    }
+
+    private function createUser(string $name, string $email): User
+    {
+        return User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $name,
+                'password' => Hash::make(Str::random(40)),
+            ]
+        );
     }
 
     private function addComments(User $user, array $texts, RewardService $rewardService)

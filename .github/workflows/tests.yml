@@ -1,0 +1,141 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: waspi-rewards-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpunit:
+    name: Laravel tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run automated tests
+        run: php artisan test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Enforce dependency security threshold
+        run: npm audit --audit-level=high
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build --tag waspi-rewards:ci .
+
+      - name: Smoke test complete application in Docker
+        run: |
+          APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+
+          docker run --detach --name waspi-rewards-smoke \
+            --publish 127.0.0.1:8080:10000 \
+            --env APP_KEY="$APP_KEY" \
+            --env RUN_DATABASE_SETUP=true \
+            --env WASPI_DEMO_ACCESS_ENABLED=true \
+            --env WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test \
+            waspi-rewards:ci
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/up; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null
+          docker exec waspi-rewards-smoke php -r 'exit(extension_loaded("pdo_pgsql") ? 0 : 1);'
+
+          page="$(curl --fail --silent --show-error http://127.0.0.1:8080/)"
+          echo "$page" | grep -q 'WASPI Rewards'
+
+          asset_file="$(curl --fail --silent --show-error http://127.0.0.1:8080/build/manifest.json | jq -r '."resources/js/app.js".file')"
+          test -n "$asset_file"
+          curl --fail --silent --show-error "http://127.0.0.1:8080/build/$asset_file" >/dev/null
+
+          token="$(curl --fail --silent --show-error \
+            --request POST http://127.0.0.1:8080/api/demo-token | jq -r '.token')"
+          test -n "$token"
+          test "$token" != "null"
+
+          api_response="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            http://127.0.0.1:8080/api/users)"
+
+          echo "$api_response" | jq -e '.meta.authenticated_user_id != null' >/dev/null
+          echo "$api_response" | jq -e '.data | length > 0' >/dev/null
+
+          docker rm --force waspi-rewards-smoke
+
+      - name: Verify hosted assessment preview
+        env:
+          PREVIEW_URL: https://waspi-rewards-assessment.onrender.com
+        run: |
+          for attempt in $(seq 1 36); do
+            status="$(curl --silent --show-error --output /tmp/preview-health --write-out '%{http_code}' "$PREVIEW_URL/up" || true)"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          test "$status" = "200"
+
+          page="$(curl --fail --silent --show-error "$PREVIEW_URL/")"
+          echo "$page" | grep -q '<title>WASPI Rewards</title>'
+
+          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d '"' -f 2)"
+          test -n "$asset_path"
+
+          case "$asset_path" in
+            http://*|https://*) asset_url="$asset_path" ;;
+            *) asset_url="$PREVIEW_URL$asset_path" ;;
+          esac
+          curl --fail --silent --show-error "$asset_url" >/dev/null
+
+          token="$(curl --fail --silent --show-error \
+            --request POST "$PREVIEW_URL/api/demo-token" | jq -er '.token')"
+
+          users="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$PREVIEW_URL/api/users")"
+          echo "$users" | jq -e '.meta.authenticated_user_id != null and (.data | length >= 6)' >/dev/null
+
+          comments="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$PREVIEW_URL/api/comments")"
+          echo "$comments" | jq -e '.data | length > 0' >/dev/null
