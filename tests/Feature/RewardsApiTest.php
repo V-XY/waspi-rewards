@@ -201,6 +201,22 @@ class RewardsApiTest extends TestCase
         $this->postJson('/api/demo-token')->assertStatus(503);
     }
 
+    public function test_demo_token_endpoint_is_rate_limited(): void
+    {
+        config([
+            'waspi.demo_access_enabled' => true,
+            'waspi.demo_user_email' => 'demo@waspi-rewards.test',
+        ]);
+
+        User::factory()->create(['email' => 'demo@waspi-rewards.test']);
+
+        foreach (range(1, 5) as $attempt) {
+            $this->postJson('/api/demo-token')->assertOk();
+        }
+
+        $this->postJson('/api/demo-token')->assertStatus(429);
+    }
+
     public function test_demo_token_is_issued_only_for_the_configured_demo_account(): void
     {
         config([
