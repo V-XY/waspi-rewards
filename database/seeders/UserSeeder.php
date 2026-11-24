@@ -12,7 +12,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $rewardService = new RewardService();
+        User::firstOrCreate(\n            ['email' => config('waspi.demo_user_email')],\n            [\n                'name' => 'Demo User',\n                'password' => Hash::make(Str::random(40)),\n            ]\n        );\n\n        $rewardService = new RewardService();
 
         $users = [
             User::factory()->create(['name' => 'Maxime Heidenreich V', 'email' => 'maxime@example.com']),
