@@ -1,3 +1,11 @@
+databases:
+  - name: waspi-rewards-assessment-db
+    databaseName: waspi_rewards_assessment_db
+    user: waspi_rewards_assessment_db_user
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: 18
+
 services:
   - type: web
     name: waspi-rewards-assessment
@@ -23,7 +31,9 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_URL
-        sync: false
+        fromDatabase:
+          name: waspi-rewards-assessment-db
+          property: connectionString
       - key: SESSION_DRIVER
         value: array
       - key: CACHE_STORE
