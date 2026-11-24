@@ -50,3 +50,20 @@ jobs:
 
       - name: Build Docker image
         run: docker build --tag waspi-rewards:ci .
+
+      - name: Smoke test Docker container
+        run: |
+          docker run --detach --name waspi-rewards-smoke --publish 127.0.0.1:8080:80 waspi-rewards:ci
+
+          for attempt in $(seq 1 15); do
+            if curl --fail --silent http://127.0.0.1:8080/up; then
+              docker rm --force waspi-rewards-smoke
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs waspi-rewards-smoke
+          docker rm --force waspi-rewards-smoke
+          exit 1
