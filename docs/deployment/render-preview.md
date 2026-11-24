@@ -1,95 +1,71 @@
 # Render assessment preview
 
-This guide describes the isolated, free-tier WASPI Rewards preview. It does not use paid services.
+The WASPI Rewards assessment preview runs on a separate Render service and database. It is isolated from the existing `waspi-rewards` service on `main`.
 
-## Architecture
+## Live environment
 
-- **Application:** Render Free web service, built from the repository Dockerfile.
-- **Database:** Render Free PostgreSQL in Frankfurt.
-- **Source branch:** `test/harden-rewards-suite`.
-- **Health check:** `/up`.
-- **Demo access:** enabled only in this isolated deployment.
+- **Application:** [waspi-rewards-assessment.onrender.com](https://waspi-rewards-assessment.onrender.com)
+- **Render service:** `waspi-rewards-assessment`
+- **Source branch:** `test/harden-rewards-suite`
+- **Runtime:** Docker, PHP 8.4 and Apache
+- **Region:** Frankfurt
+- **Plan:** Free
+- **Health check:** `/up`
+- **Database:** separate Render Free PostgreSQL instance in Frankfurt
+- **Demo access:** enabled for the dedicated seeded demo account
 
-The web service sleeps after inactivity and may take time to wake. Its filesystem is ephemeral, so SQLite is not suitable for persistent hosted data. Render Free PostgreSQL expires 30 days after creation. This preview is temporary and must not hold important or irreplaceable data.
+The first deployment completed successfully. Render reported the service live, returned HTTP 200 for its `/up` health check and root HEAD request, and completed the database migrations and seed operation. The latest branch revision is deployed automatically after its GitHub checks pass.
 
-## 1. Database
+## Deployment configuration
 
-The assessment database has been provisioned separately in the Render workspace. In the Render dashboard, open the database and copy its **Internal Database URL**. Keep it private.
+The service is defined in the repository's `render.yaml` Blueprint. The Blueprint links the web service to the separately provisioned assessment database through Render's internal connection string. Application secrets are stored in Render environment settings, not in Git.
 
-The application service must receive the following environment variables:
+Important runtime settings:
 
-| Key | Value |
+| Key | Purpose |
 |---|---|
-| `DB_CONNECTION` | `pgsql` |
-| `DB_URL` | Internal Database URL from the Render database |
-| `RUN_DATABASE_SETUP` | `true` |
-| `SESSION_DRIVER` | `array` |
-| `CACHE_STORE` | `array` |
-| `QUEUE_CONNECTION` | `sync` |
+| `APP_ENV=production` | Production Laravel configuration |
+| `APP_DEBUG=false` | Prevent debug details from being exposed |
+| `APP_KEY` | Unique Laravel encryption key stored in Render |
+| `APP_URL` | Public HTTPS service URL |
+| `DB_CONNECTION=pgsql` | PostgreSQL driver |
+| `DB_URL` | Private Render database connection |
+| `RUN_DATABASE_SETUP=true` | Apply migrations and seed the assessment data at startup |
+| `WASPI_DEMO_ACCESS_ENABLED=true` | Enable the restricted demo-token endpoint |
+| `WASPI_DEMO_USER_EMAIL` | Dedicated demo account |
 
-Use the internal URL because the web service and database are in the same Render region. Do not put the URL in GitHub, this guide, screenshots or chat messages.
+The database bootstrap is repeat-safe. Migrations run on startup, the demo account is created if absent, and the sample dataset uses a sentinel account to avoid duplicate records after restarts.
 
-## 2. Web service
+## Verification
 
-Create a separate web service. Do not modify the existing `waspi-rewards` service, which remains on `main`.
+GitHub Actions verifies the PHP test suite, npm dependency audit, Vite production build, Docker image build and a container smoke test. The container smoke test checks:
 
-| Setting | Value |
-|---|---|
-| Repository | `https://github.com/V-XY/waspi-rewards` |
-| Branch | `test/harden-rewards-suite` |
-| Runtime | Docker |
-| Dockerfile | `./Dockerfile` |
-| Plan | Free |
-| Region | Frankfurt |
-| Health check | `/up` |
-| Auto-deploy | Enabled |
+- Laravel health endpoint.
+- Rendered application page and compiled Vue asset.
+- Demo-token issuance.
+- Authenticated users API and authenticated-user metadata.
+- PostgreSQL PHP driver availability.
 
-Set these additional environment variables:
+Render's own deployment checks confirm that the hosted service starts and that `/up` returns HTTP 200. The initial hosted boot also completed PostgreSQL migrations and the seed operation.
 
-| Key | Value |
-|---|---|
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_KEY` | A newly generated Laravel key |
-| `APP_URL` | The exact HTTPS URL assigned to this service |
-| `LOG_CHANNEL` | `stderr` |
-| `DB_CONNECTION` | `pgsql` |
-| `WASPI_DEMO_ACCESS_ENABLED` | `true` |
-| `WASPI_DEMO_USER_EMAIL` | `demo@waspi-rewards.test` |
-| `RUN_DATABASE_SETUP` | `true` |
+A full manual browser walkthrough of adding a comment, liking it and reloading to confirm persistence remains the final assessor-facing interaction check.
 
-Generate a new application key for this deployment. Never reuse a key from another environment or commit it to the repository. The demo account is seeded automatically when database setup is enabled.
+## Free-tier limits
 
-## 3. First deployment checks
+- The web service sleeps after inactivity and can take time to wake.
+- Its filesystem is ephemeral. Do not rely on local uploads or SQLite for hosted persistence.
+- The Free PostgreSQL database expires on **24 December 2026**, 30 days after creation.
+- The preview is temporary and is not suitable for production workloads or long-term data retention.
 
-After Render reports a successful deployment:
-
-1. Open the assigned HTTPS URL and confirm the page loads.
-2. Confirm the Vue application and compiled assets load.
-3. Obtain a token through `POST /api/demo-token`.
-4. Call `GET /api/users` with the bearer token and confirm sample users are returned.
-5. Add a comment and like a comment through the interface.
-6. Reload the page and confirm changes remain in PostgreSQL.
-7. Restart the service and confirm the sample dataset is not duplicated.
-
-GitHub Actions already verifies the Docker image, container startup, SQLite migrations and seeding, health endpoint, rendered page, compiled assets, demo-token issuance and authenticated API access. These checks do not replace a live PostgreSQL and browser verification.
-
-## 4. Limits
-
-- Render Free web services sleep after inactivity and may have a cold start.
-- The service filesystem is ephemeral. Do not rely on local uploads or SQLite persistence.
-- The free PostgreSQL database expires 30 days after creation.
-- Free-tier quotas and availability can change. Check the Render dashboard before relying on this preview.
-
-This setup is suitable for a short assessment demonstration, not production workloads or long-term data retention.
+No paid Render resources are part of this assessment setup. Check the Render dashboard for current free-tier limits before relying on the preview.
 
 ## Demonstration flow
 
-1. Open the service URL and allow the cold start to finish if needed.
-2. Show the seeded leaderboard and reward totals.
-3. Add a comment and show the points update.
-4. Like a comment and show the reward logic.
-5. Refresh the page and confirm the data persists.
-6. Explain that the public demo token is restricted to the seeded demo account and expires after one hour.
+1. Open the [assessment preview](https://waspi-rewards-assessment.onrender.com) and allow it to wake if it has been idle.
+2. Review the seeded leaderboard and reward totals.
+3. Add a comment and observe the points update.
+4. Like a comment and observe the reward logic.
+5. Reload the page and confirm that the data persists in PostgreSQL.
+6. Explain that the demo token is restricted to the seeded demo account and expires after one hour.
 
 Never publish database credentials, application keys or bearer tokens.
