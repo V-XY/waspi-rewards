@@ -90,7 +90,7 @@ export default {
   methods: {
     async getToken() {
       try {
-        const res = await axios.get('/api/token');
+        const res = await axios.post('/api/demo-token');
         this.token = res.data.token;
         localStorage.setItem('token', this.token);
         this.fetchData();
@@ -112,7 +112,7 @@ export default {
 
         const users = await axios.get('/api/users', config);
         if (users.data.data.length) {
-          this.user = users.data.data[0];
+          this.user = users.data.data.find((item) => item.id === users.data.meta?.authenticated_user_id) || null;
           // Sort by points descending for leaderboard
           this.leaderboard = [...users.data.data]
             .sort((a, b) => b.points - a.points)
