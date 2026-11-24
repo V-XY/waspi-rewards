@@ -54,6 +54,9 @@ jobs:
       - name: Build Docker image
         run: docker build --tag waspi-rewards:ci .
 
+      - name: Build Vercel preview container
+        run: docker build --file Dockerfile.vercel --tag waspi-rewards:vercel-preview .
+
       - name: Smoke test complete application in Docker
         run: |
           APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
