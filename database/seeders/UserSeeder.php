@@ -25,11 +25,11 @@ class UserSeeder extends Seeder
         $rewardService = new RewardService();
 
         $users = [
-            User::factory()->create(['name' => 'Maxime Heidenreich V', 'email' => 'maxime@example.com']),
-            User::factory()->create(['name' => 'Ms. Kelli Huels V', 'email' => 'kelli@example.com']),
-            User::factory()->create(['name' => 'Tito Daniel V', 'email' => 'tito@example.com']),
-            User::factory()->create(['name' => 'Kevin Talla V', 'email' => 'kevin@example.com']),
-            User::factory()->create(['name' => 'Sarah Njoya V', 'email' => 'sarah@example.com']),
+            $this->createUser('Maxime Heidenreich V', 'maxime@example.com'),
+            $this->createUser('Ms. Kelli Huels V', 'kelli@example.com'),
+            $this->createUser('Tito Daniel V', 'tito@example.com'),
+            $this->createUser('Kevin Talla V', 'kevin@example.com'),
+            $this->createUser('Sarah Njoya V', 'sarah@example.com'),
         ];
 
         $maximeComments = $this->addComments($users[0], [
@@ -252,6 +252,17 @@ class UserSeeder extends Seeder
                 'comment_id' => $comment->id,
             ]);
         }
+    }
+
+    private function createUser(string $name, string $email): User
+    {
+        return User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $name,
+                'password' => Hash::make(Str::random(40)),
+            ]
+        );
     }
 
     private function addComments(User $user, array $texts, RewardService $rewardService)
