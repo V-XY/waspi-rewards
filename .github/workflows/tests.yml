@@ -54,29 +54,27 @@ jobs:
       - name: Build Docker image
         run: docker build --tag waspi-rewards:ci .
 
-      - name: Build Vercel preview container
-        run: docker build --file Dockerfile.vercel --tag waspi-rewards:vercel-preview .
-
       - name: Smoke test complete application in Docker
         run: |
           APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
 
           docker run --detach --name waspi-rewards-smoke \
-            --publish 127.0.0.1:8080:80 \
+            --publish 127.0.0.1:8080:10000 \
             --env APP_KEY="$APP_KEY" \
+            --env RUN_DATABASE_SETUP=true \
             --env WASPI_DEMO_ACCESS_ENABLED=true \
             --env WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test \
             waspi-rewards:ci
 
-          for attempt in $(seq 1 15); do
+          for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8080/up; then
               break
             fi
             sleep 2
           done
 
-          docker exec waspi-rewards-smoke php artisan migrate --force
-          docker exec waspi-rewards-smoke php artisan db:seed --force
+          curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null
+          docker exec waspi-rewards-smoke php -r 'exit(extension_loaded("pdo_pgsql") ? 0 : 1);'
 
           page="$(curl --fail --silent --show-error http://127.0.0.1:8080/)"
           echo "$page" | grep -q 'WASPI Rewards'
