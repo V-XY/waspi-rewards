@@ -34,6 +34,8 @@ Neon Free currently includes 1 GB of storage per project and 100 compute-hours p
 6. Render should detect the root `render.yaml` Blueprint.
 7. Confirm the web service plan is **Free**. Do not add paid resources.
 
+If connecting the GitHub account is troublesome, this repository is public, so you can use Render's **Public Git Repository** option instead. Enter `https://github.com/V-XY/waspi-rewards`, select branch `test/harden-rewards-suite`, choose the Docker runtime and Free plan, set the Dockerfile path to `./Dockerfile`, choose Frankfurt, and set health check to `/up`. Add the environment variables from the table below manually. This fallback does not auto-deploy on pushes; trigger a manual deploy when the branch changes.
+
 If Render asks for `DB_URL`, paste the Neon pooled connection string. When prompted for `APP_KEY`, generate a Laravel-formatted key locally with `php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'` and paste the result. Do not reuse an application key from another environment.
 
 The Blueprint pins deployment to the assessment branch. It does not deploy `main`.
