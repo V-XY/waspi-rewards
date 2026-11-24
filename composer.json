@@ -4,7 +4,6 @@
     "type": "project",
     "description": "WASPI Rewards application built with Laravel and Vue.",
     "keywords": ["waspi", "rewards", "laravel", "vue"],
-    "license": "MIT",
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.8",
