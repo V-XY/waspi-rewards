@@ -46,6 +46,45 @@ class RewardServiceTest extends TestCase
         }
     }
 
+    public function test_comment_milestone_cannot_be_claimed_again_after_deletion_and_recreation(): void
+    {
+        $user = User::factory()->create();
+        $service = app(RewardService::class);
+
+        for ($count = 1; $count <= 30; $count++) {
+            $comment = Comment::create([
+                'user_id' => $user->id,
+                'text' => "Comment {$count}",
+            ]);
+
+            $service->handleNewComment($comment);
+        }
+
+        $this->assertSame(2500, $user->fresh()->points);
+
+        $user->comments()->firstOrFail()->delete();
+        $replacement = Comment::create([
+            'user_id' => $user->id,
+            'text' => 'Replacement comment',
+        ]);
+
+        $service->handleNewComment($replacement);
+
+        $this->assertSame(2500, $user->fresh()->points);
+    }
+
+    public function test_reprocessing_the_same_comment_does_not_duplicate_its_reward(): void
+    {
+        $user = User::factory()->create();
+        $comment = Comment::create(['user_id' => $user->id, 'text' => 'First comment']);
+        $service = app(RewardService::class);
+
+        $service->handleNewComment($comment);
+        $service->handleNewComment($comment);
+
+        $this->assertSame(50, $user->fresh()->points);
+    }
+
     public function test_comment_rewards_are_added_to_existing_points(): void
     {
         $user = User::factory()->create(['points' => 125]);
@@ -83,6 +122,40 @@ class RewardServiceTest extends TestCase
                 $this->assertSame(500, $user->fresh()->points);
             }
         }
+    }
+
+    public function test_like_milestone_cannot_be_claimed_again_after_unlike_and_relike(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $service = app(RewardService::class);
+        $comments = collect(range(1, 10))->map(fn (int $count) => Comment::create([
+            'user_id' => $owner->id,
+            'text' => "Comment {$count}",
+        ]));
+
+        $likes = $comments->map(function (Comment $comment) use ($user, $service) {
+            $like = Like::create([
+                'user_id' => $user->id,
+                'comment_id' => $comment->id,
+            ]);
+
+            $service->handleNewLike($like);
+
+            return $like;
+        });
+
+        $this->assertSame(500, $user->fresh()->points);
+
+        $likes->first()->delete();
+        $replacementLike = Like::create([
+            'user_id' => $user->id,
+            'comment_id' => $comments->first()->id,
+        ]);
+
+        $service->handleNewLike($replacementLike);
+
+        $this->assertSame(500, $user->fresh()->points);
     }
 
     public function test_like_rewards_are_added_to_existing_points(): void
