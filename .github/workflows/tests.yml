@@ -54,19 +54,48 @@ jobs:
       - name: Build Docker image
         run: docker build --tag waspi-rewards:ci .
 
-      - name: Smoke test Docker container
+      - name: Smoke test complete application in Docker
+        env:
+          APP_KEY: ${{ secrets.CI_APP_KEY }}
         run: |
-          docker run --detach --name waspi-rewards-smoke --publish 127.0.0.1:8080:80 waspi-rewards:ci
+          if [ -z "$APP_KEY" ]; then
+            APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          fi
+
+          docker run --detach --name waspi-rewards-smoke \
+            --publish 127.0.0.1:8080:80 \
+            --env APP_KEY="$APP_KEY" \
+            --env WASPI_DEMO_ACCESS_ENABLED=true \
+            --env WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test \
+            waspi-rewards:ci
 
           for attempt in $(seq 1 15); do
             if curl --fail --silent http://127.0.0.1:8080/up; then
-              docker rm --force waspi-rewards-smoke
-              exit 0
+              break
             fi
-
             sleep 2
           done
 
-          docker logs waspi-rewards-smoke
+          docker exec waspi-rewards-smoke php artisan migrate --force
+          docker exec waspi-rewards-smoke php artisan db:seed --force
+
+          page="$(curl --fail --silent --show-error http://127.0.0.1:8080/)"
+          echo "$page" | grep -q 'WASPI Rewards'
+
+          asset_file="$(curl --fail --silent --show-error http://127.0.0.1:8080/build/manifest.json | jq -r '."resources/js/app.js".file')"
+          test -n "$asset_file"
+          curl --fail --silent --show-error "http://127.0.0.1:8080/build/$asset_file" >/dev/null
+
+          token="$(curl --fail --silent --show-error \
+            --request POST http://127.0.0.1:8080/api/demo-token | jq -r '.token')"
+          test -n "$token"
+          test "$token" != "null"
+
+          api_response="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            http://127.0.0.1:8080/api/users)"
+
+          echo "$api_response" | jq -e '.meta.authenticated_user_id != null' >/dev/null
+          echo "$api_response" | jq -e '.data | length > 0' >/dev/null
+
           docker rm --force waspi-rewards-smoke
-          exit 1
