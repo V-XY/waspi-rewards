@@ -20,7 +20,9 @@ class UserSeeder extends Seeder
                 'name' => 'Demo User',
                 'password' => Hash::make(Str::random(40)),
             ]
-        );\n\n        $rewardService = new RewardService();
+        );
+
+        $rewardService = new RewardService();
 
         $users = [
             User::factory()->create(['name' => 'Maxime Heidenreich V', 'email' => 'maxime@example.com']),
