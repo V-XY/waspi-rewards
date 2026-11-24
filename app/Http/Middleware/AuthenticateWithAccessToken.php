@@ -11,7 +11,7 @@ class AuthenticateWithAccessToken
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->bearerToken() ?? $request->query('access_token');
+        $token = $request->bearerToken();
 
         if (!$token) {
             return response()->json(['message' => 'Unauthorized'], 401);
