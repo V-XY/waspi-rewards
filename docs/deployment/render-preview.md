@@ -1,102 +1,95 @@
-# Free hosted assessment preview
+# Render assessment preview
 
-This guide deploys WASPI Rewards on a $0 demonstration stack. It does not create paid resources.
+This guide describes the isolated, free-tier WASPI Rewards preview. It does not use paid services.
 
 ## Architecture
 
 - **Application:** Render Free web service, built from the repository Dockerfile.
-- **Database:** Neon Free PostgreSQL.
+- **Database:** Render Free PostgreSQL in Frankfurt.
 - **Source branch:** `test/harden-rewards-suite`.
 - **Health check:** `/up`.
-- **Demo access:** enabled only in this isolated assessment deployment.
+- **Demo access:** enabled only in this isolated deployment.
 
-Render's free service sleeps after 15 minutes without traffic and may take about a minute to wake. Its filesystem is ephemeral. Neon Free provides a small persistent PostgreSQL database, with compute that scales to zero when idle.
+The web service sleeps after inactivity and may take time to wake. Its filesystem is ephemeral, so SQLite is not suitable for persistent hosted data. Render Free PostgreSQL expires 30 days after creation. This preview is temporary and must not hold important or irreplaceable data.
 
-Do not create a Render persistent disk, paid compute instance, or Render PostgreSQL database for this setup. Render's free PostgreSQL database expires after 30 days.
+## 1. Database
 
-## 1. Create the Neon database
+The assessment database has been provisioned separately in the Render workspace. In the Render dashboard, open the database and copy its **Internal Database URL**. Keep it private.
 
-1. Create a free account at https://neon.tech/.
-2. Create a PostgreSQL project. Choose a region close to the Render Frankfurt region if available.
-3. Open the project's connection details.
-4. Copy the pooled connection string. It should use the PostgreSQL scheme and include SSL, usually `sslmode=require`.
-5. Keep the connection string private. Do not put it in GitHub, this repository, or a public issue.
+The application service must receive the following environment variables:
 
-Neon Free currently includes 1 GB of storage per project and 100 compute-hours per month. The compute scales to zero after inactivity. Check the current limits in the Neon dashboard before relying on the service for an extended period.
+| Key | Value |
+|---|---|
+| `DB_CONNECTION` | `pgsql` |
+| `DB_URL` | Internal Database URL from the Render database |
+| `RUN_DATABASE_SETUP` | `true` |
+| `SESSION_DRIVER` | `array` |
+| `CACHE_STORE` | `array` |
+| `QUEUE_CONNECTION` | `sync` |
 
-## 2. Connect Render to GitHub
+Use the internal URL because the web service and database are in the same Render region. Do not put the URL in GitHub, this guide, screenshots or chat messages.
 
-1. Create or sign in to a Render account at https://render.com/.
-2. Connect the GitHub account that owns `V-XY/waspi-rewards`.
-3. Grant Render access to this repository.
-4. In Render, choose **New → Blueprint** and select `V-XY/waspi-rewards`.
-5. Select the `test/harden-rewards-suite` branch.
-6. Render should detect the root `render.yaml` Blueprint.
-7. Confirm the web service plan is **Free**. Do not add paid resources.
+## 2. Web service
 
-If connecting the GitHub account is troublesome, this repository is public, so you can use Render's **Public Git Repository** option instead. Enter `https://github.com/V-XY/waspi-rewards`, select branch `test/harden-rewards-suite`, choose the Docker runtime and Free plan, set the Dockerfile path to `./Dockerfile`, choose Frankfurt, and set health check to `/up`. Add the environment variables from the table below manually. This fallback does not auto-deploy on pushes; trigger a manual deploy when the branch changes.
-
-If Render asks for `DB_URL`, paste the Neon pooled connection string. When prompted for `APP_KEY`, generate a Laravel-formatted key locally with `php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'` and paste the result. Do not reuse an application key from another environment.
-
-The Blueprint pins deployment to the assessment branch. It does not deploy `main`.
-
-## 3. Verify service settings
-
-The resulting service should have these settings:
+Create a separate web service. Do not modify the existing `waspi-rewards` service, which remains on `main`.
 
 | Setting | Value |
 |---|---|
+| Repository | `https://github.com/V-XY/waspi-rewards` |
+| Branch | `test/harden-rewards-suite` |
 | Runtime | Docker |
 | Dockerfile | `./Dockerfile` |
 | Plan | Free |
 | Region | Frankfurt |
 | Health check | `/up` |
-| Branch | `test/harden-rewards-suite` |
-| Database | Neon PostgreSQL |
-| Demo access | Enabled |
+| Auto-deploy | Enabled |
 
-The Blueprint sets `DB_CONNECTION=pgsql`, `DB_URL`, `RUN_DATABASE_SETUP=true`, and the dedicated demo email. At startup, the container applies pending migrations and seeds the sample dataset. The seeder checks for its sentinel sample account before creating the dataset, preventing duplicate comments and likes after restarts.
+Set these additional environment variables:
 
-If the service name is unavailable and Render assigns a different URL, update `APP_URL` in the Render environment to the actual HTTPS service URL.
+| Key | Value |
+|---|---|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_KEY` | A newly generated Laravel key |
+| `APP_URL` | The exact HTTPS URL assigned to this service |
+| `LOG_CHANNEL` | `stderr` |
+| `DB_CONNECTION` | `pgsql` |
+| `WASPI_DEMO_ACCESS_ENABLED` | `true` |
+| `WASPI_DEMO_USER_EMAIL` | `demo@waspi-rewards.test` |
+| `RUN_DATABASE_SETUP` | `true` |
 
-## 4. First deployment checks
+Generate a new application key for this deployment. Never reuse a key from another environment or commit it to the repository. The demo account is seeded automatically when database setup is enabled.
 
-Wait for Render to report a successful deploy. Then open the service's `onrender.com` URL.
+## 3. First deployment checks
 
-Verify:
+After Render reports a successful deployment:
 
-1. The page renders without a server error.
-2. The Vue application and compiled assets load.
-3. The demo account can obtain a token through `POST /api/demo-token`.
-4. The users API returns data when called with the bearer token.
-5. Comments, likes, and reward points work through the UI.
-6. Reloading the page preserves database-backed changes.
-7. A container restart does not duplicate the sample dataset.
+1. Open the assigned HTTPS URL and confirm the page loads.
+2. Confirm the Vue application and compiled assets load.
+3. Obtain a token through `POST /api/demo-token`.
+4. Call `GET /api/users` with the bearer token and confirm sample users are returned.
+5. Add a comment and like a comment through the interface.
+6. Reload the page and confirm changes remain in PostgreSQL.
+7. Restart the service and confirm the sample dataset is not duplicated.
 
-The GitHub Actions workflow verifies container startup, database migrations and seeding against SQLite, health, page rendering, asset delivery, demo-token issuance, and authenticated API access. The hosted PostgreSQL checks above are still required after the first Render deployment.
+GitHub Actions already verifies the Docker image, container startup, SQLite migrations and seeding, health endpoint, rendered page, compiled assets, demo-token issuance and authenticated API access. These checks do not replace a live PostgreSQL and browser verification.
 
-## 5. Free-tier behaviour and limits
+## 4. Limits
 
-- Render Free services sleep after 15 minutes without inbound traffic. The first request after sleeping can take about a minute to wake the app.
-- Render can restart free services at any time.
-- Render's free filesystem is ephemeral. Uploaded files and SQLite data are not durable.
-- Render Free provides 750 instance hours per workspace each month, enough for one free service to run continuously if it does not exceed other quotas.
-- Neon Free currently includes 1 GB storage and 100 compute-hours per project per month. Its database compute scales to zero after inactivity.
-- Render's free PostgreSQL databases expire after 30 days, so this setup intentionally uses Neon instead.
-- Stay within free bandwidth and compute quotas. Do not enable paid add-ons or upgrade prompts.
+- Render Free web services sleep after inactivity and may have a cold start.
+- The service filesystem is ephemeral. Do not rely on local uploads or SQLite persistence.
+- The free PostgreSQL database expires 30 days after creation.
+- Free-tier quotas and availability can change. Check the Render dashboard before relying on this preview.
 
-These free tiers are suitable for a low-traffic assessment preview, not a production service with uptime guarantees or critical user data.
+This setup is suitable for a short assessment demonstration, not production workloads or long-term data retention.
 
-## 6. Demonstration path
+## Demonstration flow
 
-Use this sequence when showing the application:
+1. Open the service URL and allow the cold start to finish if needed.
+2. Show the seeded leaderboard and reward totals.
+3. Add a comment and show the points update.
+4. Like a comment and show the reward logic.
+5. Refresh the page and confirm the data persists.
+6. Explain that the public demo token is restricted to the seeded demo account and expires after one hour.
 
-1. Open the public Render URL. If the service has been idle, allow the cold start to finish.
-2. Wait for the feed and sample users to load.
-3. Demonstrate the seeded leaderboard and reward totals.
-4. Add a comment and show the points update.
-5. Like a comment and show the reward logic.
-6. Refresh the page and confirm the data remains.
-7. Explain that the public demo token is restricted to the seeded demo account and expires after one hour.
-
-Do not publish database credentials, application keys, or bearer tokens in screenshots, documentation, or the public repository.
+Never publish database credentials, application keys or bearer tokens.
