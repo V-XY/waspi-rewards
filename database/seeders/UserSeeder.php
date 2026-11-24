@@ -108,7 +108,7 @@ class UserSeeder extends Seeder
             'The final result is much cleaner.',
         ], $rewardService);
 
-        // Kevin reaches 30 comments and 10 likes, totaling 3050 points.
+        // Kevin reaches 30 comments and 10 likes, totaling 3000 points.
         // This demonstrates the 3000-point case from the assessment.
         $kevinComments = $this->addComments($users[3], [
             'I like the direction of this.',
