@@ -108,8 +108,6 @@ class UserSeeder extends Seeder
             'The final result is much cleaner.',
         ], $rewardService);
 
-        // Kevin reaches 30 comments and 10 likes, totaling 3000 points.
-        // This demonstrates the 3000-point case from the assessment.
         $kevinComments = $this->addComments($users[3], [
             'I like the direction of this.',
             'The change is noticeable.',
@@ -195,8 +193,6 @@ class UserSeeder extends Seeder
             'The result is clean.',
             'Nice work.',
         ], $rewardService);
-
-        // Seed likes for all users to make the feed look populated.
 
         $kevinLikeable = Comment::where('user_id', '!=', $users[3]->id)
             ->whereNotIn('id', $kevinComments->pluck('id'))
