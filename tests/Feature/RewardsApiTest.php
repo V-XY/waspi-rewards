@@ -184,7 +184,7 @@ class RewardsApiTest extends TestCase
             'waspi.demo_user_email' => 'demo@waspi-rewards.test',
         ]);
 
-        $this->postJson('/api/demo-token')->assertServiceUnavailable();
+        $this->postJson('/api/demo-token')->assertStatus(503);
     }
 
     public function test_demo_token_is_issued_only_for_the_configured_demo_account(): void
