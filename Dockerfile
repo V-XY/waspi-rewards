@@ -73,7 +73,9 @@ RUN sed -ri \
     /etc/apache2/conf-available/*.conf
 
 # Allow Laravel .htaccess to control requests under the public document root
-RUN sed -ri \\\n    '/<Directory \\/var\\/www\\/html\\/public>/,/<\\/Directory>/ s/AllowOverride None/AllowOverride All/' \\\n    /etc/apache2/apache2.conf
+RUN sed -ri \
+    '/<Directory \/var\/www\/html\/public>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
+    /etc/apache2/apache2.conf
 
 EXPOSE 80
 
