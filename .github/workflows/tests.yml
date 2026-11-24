@@ -42,20 +42,11 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Resolve compatible frontend security updates
-        run: npm audit fix --package-lock-only
-
       - name: Install frontend dependencies
         run: npm ci
 
       - name: Enforce dependency security threshold
         run: npm audit --audit-level=high
-
-      - name: Export refreshed lockfile for repository update
-        run: |
-          echo "BEGIN_LOCKFILE"
-          cat package-lock.json
-          echo "END_LOCKFILE"
 
       - name: Build frontend assets
         run: npm run build
@@ -64,12 +55,8 @@ jobs:
         run: docker build --tag waspi-rewards:ci .
 
       - name: Smoke test complete application in Docker
-        env:
-          APP_KEY: ${{ secrets.CI_APP_KEY }}
         run: |
-          if [ -z "$APP_KEY" ]; then
-            APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
-          fi
+          APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
 
           docker run --detach --name waspi-rewards-smoke \
             --publish 127.0.0.1:8080:80 \
