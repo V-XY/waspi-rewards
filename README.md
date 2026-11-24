@@ -1,147 +1,101 @@
 # WASPI Rewards
 
-A Laravel and Vue.js application implementing the WASPI Rewards point and badge system.
+WASPI Rewards is a Laravel and Vue application for tracking user activity, points, badges and a shared comments feed.
 
-## Requirements
+## Stack
 
-- PHP 8.4+
-- Composer
-- Node.js and npm
-- SQLite or PostgreSQL
+- Laravel 12 and PHP 8.4
+- Vue 3 with Vite
+- PostgreSQL for hosted data; SQLite for local development
+- Laravel Sanctum personal access tokens
+- Docker and Apache
 
-## Local Installation
+## Local development
 
-Clone the repository:
+Requirements: PHP 8.4+, Composer, Node.js, npm and SQLite or PostgreSQL.
 
 ```bash
 git clone https://github.com/V-XY/waspi-rewards.git
 cd waspi-rewards
-```
-
-Install PHP dependencies:
-
-```bash
 composer install
-```
-
-Create the environment file:
-
-```bash
 cp .env.example .env
 php artisan key:generate
 ```
 
-Configure the database in `.env`.
-
-For SQLite, create the database file:
+Configure the database in `.env`. For SQLite, create the database file:
 
 ```bash
 touch database/database.sqlite
-```
-
-Run migrations and seed the database:
-
-```bash
 php artisan migrate --seed
 ```
 
-Install and build frontend dependencies:
+Install the frontend dependencies and start the development server:
 
 ```bash
 npm ci
 npm run build
-```
-
-Start the Laravel development server:
-
-```bash
 php artisan serve
 ```
 
 ## Docker
 
-Build the image:
+Build and run the image with a unique application key:
 
 ```bash
 docker build -t waspi-rewards .
-```
-
-Run it with a runtime application key:
-
-```bash
 docker run --detach --name waspi-rewards \
   --publish 8080:10000 \
   --env APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')" \
   waspi-rewards
 ```
 
-The container listens on port `10000`, serves Laravel from `public/`, and builds the Vue/Vite assets during image construction. It defaults to production mode with debug output disabled. Supply a unique `APP_KEY` at runtime; never bake secrets into the image.
+The container listens on port `10000` and serves Laravel from `public/`. Vite assets are built during image construction. The image defaults to production mode with debug output disabled.
 
-The image uses SQLite by default for local container testing. Its database is not durable when the container is replaced. For a persistent deployment, configure PostgreSQL through `DB_CONNECTION=pgsql` and `DB_URL`, or use a genuinely persistent volume for SQLite.
+SQLite is the default for local container testing. Its data is not durable when the container is replaced. For a persistent deployment, configure PostgreSQL with `DB_CONNECTION=pgsql` and `DB_URL`.
 
-The optional `RUN_DATABASE_SETUP=true` setting runs pending migrations and the database seeder before Apache starts. It is intended for the isolated hosted assessment environment. The sample-data seeder is repeat-safe, so container restarts do not continually duplicate the sample comments and likes. For a normal production deployment, run migrations as a controlled release step instead.
+Set `RUN_DATABASE_SETUP=true` only for an isolated environment where the container is expected to run migrations and seed data at startup. In a production release process, run migrations as a controlled deployment step.
 
-## Free Hosted Assessment Preview (Render + Neon)
+## Hosted assessment preview
 
-The repository includes a Render Blueprint in `render.yaml`. It is configured to deploy only the `test/harden-rewards-suite` branch on Render's Free web-service plan.
+The assessment deployment is isolated on Render and uses:
 
-The hosted preview uses:
+- A Free Docker web service pinned to `test/harden-rewards-suite`.
+- A separate Free PostgreSQL database in Frankfurt.
+- A dedicated demo account and a one-hour demo token.
+- The Laravel `/up` health endpoint.
 
-- Render Free Docker web service for the Laravel application.
-- Neon Free PostgreSQL for durable relational data.
-- A generated Laravel application key.
-- A dedicated seeded demonstration account.
-- Startup migrations and one-time sample-data seeding.
-- The `/up` health endpoint.
+The deployment guide is in [docs/deployment/render-preview.md](docs/deployment/render-preview.md).
 
-Setup instructions, environment variables, free-tier limits, and the demonstration flow are documented in [the Render preview guide](docs/deployment/render-preview.md).
+Render's free web services sleep after inactivity and use an ephemeral filesystem. Its free PostgreSQL databases expire after 30 days. This environment is for assessment and demonstration, not production hosting or long-term data retention.
 
-This is a demonstration environment, not production hosting. Render free services sleep after 15 minutes without traffic and can take about a minute to wake. Their local filesystem is ephemeral, so the database must remain external. Do not use Render's free PostgreSQL for this long-lived preview because Render deletes free PostgreSQL databases after 30 days.
+## Environment
 
-## Environment Configuration
-
-Minimum runtime settings for a conventional deployment:
+A hosted deployment requires these settings:
 
 ```text
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=your-generated-laravel-key
-APP_URL=https://your-deployment-host
-
+APP_URL=https://your-service.onrender.com
 DB_CONNECTION=pgsql
 DB_URL=your-postgresql-connection-string
-
 SESSION_DRIVER=array
 CACHE_STORE=array
 QUEUE_CONNECTION=sync
 ```
 
-Keep any additional environment variables required by the application. Store secrets in the hosting provider's environment settings, never in source control.
+Keep secrets in the hosting provider's environment settings. Never commit application keys, database URLs or bearer tokens.
 
-## Controlled Public Demonstration
+## Demo access
 
-Public demo access is disabled by default.
-
-Only enable it when a public demonstration is intended:
+Public demo access is disabled by default. Enable it only in an isolated demonstration environment:
 
 ```text
 WASPI_DEMO_ACCESS_ENABLED=true
 WASPI_DEMO_USER_EMAIL=demo@waspi-rewards.test
 ```
 
-Run the database seeder so the dedicated demo account exists. The rate-limited `POST /api/demo-token` endpoint issues a one-hour bearer token for that account only. It does not issue tokens for arbitrary users.
-
-Do not enable this endpoint on an environment containing real user accounts or sensitive data. Keep it disabled for normal deployments.
-
-## Testing
-
-Run the application test suite:
-
-```bash
-php artisan test
-```
-
-The GitHub Actions workflow installs frontend dependencies, audits the dependency tree, builds the Vue/Vite assets and Docker image, starts the container with database bootstrap enabled, and checks the health endpoint, rendered page, compiled JavaScript asset, demo-token endpoint, and authenticated users API.
+The seeded demo account is the only account that can receive a token from the rate-limited `POST /api/demo-token` endpoint. Tokens expire after one hour. Do not enable this endpoint in an environment containing real user data.
 
 ## API
 
@@ -154,50 +108,30 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 Optional filters:
 
-- `type` — filter users by badge type
-- `points` — filter users by points
+- `type`: filter by badge type
+- `points`: filter by points
 
-Missing or invalid credentials must not return user data. Tokens must not be supplied in query strings.
+Credentials must be sent in the Authorization header, not in query parameters.
 
-## Reward Rules
+## Reward rules
 
-| Action | Requirement | Points | Badge |
-|---|---:|---:|---|
-| First comment | 1 comment | 50 | Beginner |
-| Comments | 30 comments | 2,500 | Top Fan |
-| Comments | 50+ comments | 5,000 | Super Fan |
-| Likes | 10 likes | 500 | Beginner |
+| Activity | Threshold | Points awarded |
+|---|---:|---:|
+| First comment | 1 comment | 50 |
+| Comments milestone | 30 comments | 2,450 |
+| Comments milestone | 50 comments | 2,500 |
+| Likes milestone | 10 likes | 500 |
 
-The application also determines the next badge available to each user based on their current activity and points.
+Each milestone is granted once per user. A database uniqueness constraint protects against duplicate awards.
 
-## Project Structure
+## Verification
 
-```text
-app/
-├── Http/
-├── Models/
-└── Services/
+Run the automated tests with:
 
-database/
-├── migrations/
-└── seeders/
-
-resources/
-├── js/
-└── views/
-
-routes/
-├── api.php
-└── web.php
-
-public/
-Dockerfile
-render.yaml
-package.json
-composer.json
-vite.config.js
+```bash
+php artisan test
 ```
 
-## Assessment Context
+GitHub Actions also audits npm dependencies, builds the frontend and Docker image, then smoke-tests the container, health endpoint, page, compiled assets, demo-token endpoint and authenticated API.
 
-This repository was developed as a technical assessment for a Full Stack Developer position. It demonstrates Laravel backend development, Vue.js frontend integration, REST API design, database relationships, reward and badge logic, authentication, automated testing, and containerised deployment.
+The hosted PostgreSQL deployment and browser interaction checks must be verified separately after deployment.
