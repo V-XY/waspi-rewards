@@ -23,7 +23,7 @@ Route::post('/demo-token', function () {
 Route::get('/users', [UserController::class, 'index'])
     ->middleware(AuthenticateWithAccessToken::class);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/comments', [CommentController::class, 'index']);
     Route::post('/comments', [CommentController::class, 'store']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
