@@ -62,6 +62,17 @@ class RewardServiceTest extends TestCase
 
         $this->assertSame(2500, $user->fresh()->points);
 
+        for ($count = 31; $count <= 50; $count++) {
+            $comment = Comment::create([
+                'user_id' => $user->id,
+                'text' => "Comment {$count}",
+            ]);
+
+            $service->handleNewComment($comment);
+        }
+
+        $this->assertSame(5000, $user->fresh()->points);
+
         $user->comments()->firstOrFail()->delete();
         $replacement = Comment::create([
             'user_id' => $user->id,
@@ -70,7 +81,7 @@ class RewardServiceTest extends TestCase
 
         $service->handleNewComment($replacement);
 
-        $this->assertSame(2500, $user->fresh()->points);
+        $this->assertSame(5000, $user->fresh()->points);
     }
 
     public function test_reprocessing_the_same_comment_does_not_duplicate_its_reward(): void
