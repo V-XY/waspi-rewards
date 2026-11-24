@@ -169,6 +169,20 @@ class RewardsApiTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_seeder_creates_the_dedicated_demo_account(): void
+    {
+        $this->seed(\Database\Seeders\UserSeeder::class);
+
+        $this->assertDatabaseHas('users', [
+            'email' => config('waspi.demo_user_email'),
+            'name' => 'Demo User',
+        ]);
+
+        $demoUser = User::where('email', config('waspi.demo_user_email'))->firstOrFail();
+
+        $this->assertNotSame('password', $demoUser->password);
+    }
+
     public function test_demo_token_endpoint_is_disabled_by_default(): void
     {
         config(['waspi.demo_access_enabled' => false]);
