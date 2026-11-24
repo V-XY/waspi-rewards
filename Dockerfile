@@ -64,18 +64,16 @@ RUN a2enmod rewrite
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 RUN sed -ri \
-    -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" \
     /etc/apache2/sites-available/*.conf
 
 RUN sed -ri \
-    -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
+    -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" \
     /etc/apache2/apache2.conf \
     /etc/apache2/conf-available/*.conf
 
-# Allow Laravel .htaccess to control the public directory
-RUN sed -i \
-    '/<Directory \/var\/www\/html>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
-    /etc/apache2/apache2.conf
+# Allow Laravel .htaccess to control requests under the public document root
+RUN sed -ri 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
 EXPOSE 80
 
