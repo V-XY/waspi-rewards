@@ -96,7 +96,11 @@ class CommentRankingTest extends TestCase
 
     public function test_cursor_is_encrypted_and_invalid_cursors_are_rejected(): void
     {
-        [$token] = $this->actingUserWithComments(2);
+        $viewer = User::factory()->create();
+        $author = User::factory()->create();
+        Comment::create(['user_id' => $author->id, 'text' => 'First cursor comment']);
+        Comment::create(['user_id' => $author->id, 'text' => 'Second cursor comment']);
+        $token = $viewer->createToken('encrypted-cursor')->plainTextToken;
 
         $response = $this->withToken($token)
             ->getJson('/api/comments?per_page=1')
