@@ -1,4 +1,4 @@
-FROM php:8.4-apache
+FROM php:8.5-apache
 
 # System dependencies
 RUN apt-get update && apt-get install -y \
@@ -43,7 +43,9 @@ RUN composer install \
     --no-dev
 
 # Install frontend dependencies and build Vite assets
-RUN npm ci && npm run build
+RUN npm ci \
+    && npm run build \
+    && rm -rf node_modules
 
 # Create SQLite database file for local/container smoke tests.
 RUN mkdir -p database \
@@ -68,7 +70,9 @@ ENV APP_ENV=production \
     SESSION_DRIVER=array \
     CACHE_STORE=array \
     QUEUE_CONNECTION=sync \
-    RUN_DATABASE_SETUP=false
+    RUN_DATABASE_SETUP=false \
+    LOG_CHANNEL=stderr \
+    LOG_LEVEL=warning
 
 # Apache configuration
 RUN a2enmod rewrite \
@@ -95,6 +99,9 @@ COPY docker/container-entrypoint.sh /usr/local/bin/container-entrypoint
 RUN chmod +x /usr/local/bin/container-entrypoint
 
 EXPOSE 10000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:10000/up || exit 1
 
 ENTRYPOINT ["/usr/local/bin/container-entrypoint"]
 CMD ["apache2-foreground"]

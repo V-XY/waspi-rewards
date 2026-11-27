@@ -17,4 +17,9 @@ if [ "${RUN_DATABASE_SETUP:-false}" = "true" ]; then
     php artisan db:seed --force
 fi
 
+# Caches are built here, not in the image, because the environment
+# variables that config depends on only exist when the container starts.
+php artisan config:cache
+php artisan view:cache
+
 exec "$@"

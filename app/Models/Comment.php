@@ -10,6 +10,13 @@ class Comment extends Model
 {
     protected $fillable = ['user_id', 'text'];
 
+    protected function casts(): array
+    {
+        return [
+            'liked_by_user' => 'boolean',
+        ];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -18,10 +25,5 @@ class Comment extends Model
     public function likes(): HasMany
     {
         return $this->hasMany(Like::class);
-    }
-
-    public function getLikesCountAttribute(): int
-    {
-        return $this->likes()->count();
     }
 }

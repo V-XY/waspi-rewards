@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render terminates TLS at its own proxy. Trusting forwarded headers
+        // allows HTTPS detection and generated URLs to match the public address.
+        $middleware->trustProxies(at: '*');
+
+        $middleware->append(SecurityHeaders::class);
+
         $middleware->alias([
             'auth.token' => \App\Http\Middleware\AuthenticateWithAccessToken::class,
         ]);
@@ -22,3 +29,4 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
     })->create();
+}
