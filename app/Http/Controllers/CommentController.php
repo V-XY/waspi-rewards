@@ -7,11 +7,11 @@ use App\Models\Like;
 use App\Services\RewardService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
 {
