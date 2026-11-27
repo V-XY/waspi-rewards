@@ -138,9 +138,10 @@ jobs:
           comments="$(curl --fail --silent --show-error \
             --header "Authorization: Bearer $token" \
             "$PREVIEW_URL/api/comments")"
-          echo "$comments" | jq -e '.data | length > 0' >/dev/null
+          echo "$comments" | jq -e '.data | length > 0 and all(.[]; (.timestamp_source != null) and (.created_at != null))' >/dev/null
 
       - name: Verify live public demo
+        if: github.event_name == 'push'
         env:
           LIVE_URL: https://waspi-rewards-0iak.onrender.com
         run: |
@@ -168,7 +169,7 @@ jobs:
           asset_ready=false
           for attempt in $(seq 1 36); do
             asset="$(curl --fail --silent --show-error "$asset_url" || true)"
-            if echo "$asset" | grep -Fq 'Demo access is disabled for this deployment'; then
+            if echo "$asset" | grep -Fq 'Demo access is disabled for this deployment' && echo "$asset" | grep -Fq 'timestamp_source' && echo "$asset" | grep -Fq 'timeZoneName'; then
               asset_ready=true
               break
             fi
