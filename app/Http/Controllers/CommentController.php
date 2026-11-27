@@ -50,7 +50,7 @@ class CommentController extends Controller
 
         $freshCutoff = now()->subDays(7)->toDateTimeString();
 
-        $query = Comment::query()
+        $rankedComments = DB::table('comments')
             ->leftJoinSub($voteCounts, 'vote_counts', 'vote_counts.comment_id', '=', 'comments.id')
             ->select('comments.*')
             ->selectRaw('COALESCE(vote_counts.likes_count, 0) AS likes_count')
@@ -58,7 +58,12 @@ class CommentController extends Controller
             ->selectRaw(
                 "({$wilsonScore}) + CASE WHEN COALESCE(vote_counts.likes_count, 0) > 0 AND comments.created_at >= ? THEN 0.01 ELSE 0.0 END AS best_score",
                 [$freshCutoff]
-            )
+            );
+
+        // The derived table makes best_score a real column for keyset cursor predicates.
+        $query = Comment::query()
+            ->fromSub($rankedComments, 'comments')
+            ->select('comments.*')
             ->with('user:id,name')
             ->withExists(['likes as liked_by_user' => fn ($query) => $query->where('user_id', $userId)])
             ->addSelect(['viewer_vote' => Like::query()
