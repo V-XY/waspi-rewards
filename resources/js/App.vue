@@ -38,12 +38,21 @@
             <button
               type="button"
               class="like-btn"
-              :class="{ 'is-liked': comment.liked_by_user }"
+              :class="{ 'is-liked': comment.viewer_vote === 'like' }"
               :disabled="busy"
-              @click="toggleLike(comment)"
+              @click="toggleVote(comment, 'like')"
             >
-              {{ comment.liked_by_user ? 'Unlike' : 'Like' }}
+              {{ comment.viewer_vote === 'like' ? 'Unlike' : 'Like' }}
               <span class="count">{{ comment.likes_count || 0 }}</span>
+            </button>
+            <button
+              type="button"
+              class="dislike-btn"
+              :class="{ 'is-disliked': comment.viewer_vote === 'dislike' }"
+              :disabled="busy"
+              @click="toggleVote(comment, 'dislike')"
+            >
+              {{ comment.viewer_vote === 'dislike' ? 'Remove dislike' : 'Dislike' }}
             </button>
             <button
               v-if="isOwner(comment)"
@@ -349,31 +358,27 @@ export default {
       }
     },
 
-    async toggleLike(comment) {
+    async toggleVote(comment, type) {
       if (this.busy) return;
 
       this.busy = true;
-      const wasLiked = comment.liked_by_user;
+      const currentVote = comment.viewer_vote || (comment.liked_by_user ? 'like' : null);
+      const nextVote = currentVote === type ? null : type;
 
       try {
-        if (wasLiked) {
-          await this.request('delete', `/comments/${comment.id}/like`);
-        } else {
-          await this.request('post', `/comments/${comment.id}/like`);
-        }
+        const response = nextVote
+          ? await this.request('post', `/comments/${comment.id}/vote`, { data: { type: nextVote } })
+          : await this.request('delete', `/comments/${comment.id}/vote`);
 
-        comment.liked_by_user = !wasLiked;
-        comment.likes_count = Math.max(0, (comment.likes_count || 0) + (wasLiked ? -1 : 1));
-        await this.refreshUsers();
-      } catch (error) {
-        // The server's answer says what state the like is really in, so the button follows it.
-        if (error.response?.status === 422) {
-          comment.liked_by_user = true;
-        } else if (error.response?.status === 404) {
-          comment.liked_by_user = false;
-        } else {
-          this.errorMessage = this.describeError(error);
+        comment.viewer_vote = response.data.viewer_vote;
+        comment.liked_by_user = response.data.viewer_vote === 'like';
+        comment.likes_count = response.data.likes_count;
+
+        if (currentVote === 'like' || nextVote === 'like') {
+          await this.refreshUsers();
         }
+      } catch (error) {
+        this.errorMessage = this.describeError(error);
       } finally {
         this.busy = false;
       }
