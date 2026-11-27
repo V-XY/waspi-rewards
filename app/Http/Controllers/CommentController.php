@@ -35,6 +35,7 @@ class CommentController extends Controller
             ->selectRaw('COUNT(*) AS total_votes')
             ->groupBy('comment_id');
 
+        // Wilson's 95% lower confidence bound rewards consistent support, not raw vote volume.
         $positiveRate = '(CAST(vote_counts.likes_count AS REAL) / vote_counts.total_votes)';
         $wilsonScore = "CASE
             WHEN COALESCE(vote_counts.total_votes, 0) = 0 THEN 0.0
@@ -48,6 +49,7 @@ class CommentController extends Controller
             ) / (1 + (3.8416 / vote_counts.total_votes))
         END";
 
+        // A small 0.01 boost for recently supported comments improves discovery without dominating vote confidence.
         $freshCutoff = now()->subDays(7)->toDateTimeString();
 
         $rankedComments = DB::table('comments')
