@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         $middleware->alias([
-            'auth.token' => \App\Http\Middleware\AuthenticateWithAccessToken::class,
+            'auth.token' => \\App\\Http\\Middleware\\AuthenticateWithAccessToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -29,4 +29,3 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
     })->create();
-}
