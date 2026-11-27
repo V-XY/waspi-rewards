@@ -6,6 +6,8 @@ use App\Models\Comment;
 use App\Models\Like;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\Cursor;
+use Illuminate\Support\Facades\Crypt;
 use Tests\TestCase;
 
 class CommentRankingTest extends TestCase
@@ -90,6 +92,25 @@ class CommentRankingTest extends TestCase
 
         $this->assertSame([$newer->id, $older->id], collect($newest->json('data'))->pluck('id')->all());
         $this->assertSame([$older->id, $newer->id], collect($oldest->json('data'))->pluck('id')->all());
+    }
+
+    public function test_cursor_is_encrypted_and_invalid_cursors_are_rejected(): void
+    {
+        [$token] = $this->actingUserWithComments(2);
+
+        $response = $this->withToken($token)
+            ->getJson('/api/comments?per_page=1')
+            ->assertOk();
+
+        $cursor = $response->json('next_cursor');
+
+        $this->assertIsString($cursor);
+        $this->assertStringNotContainsString('best_score', $cursor);
+        $this->assertNotNull(Cursor::fromEncoded(Crypt::decryptString($cursor)));
+
+        $this->withToken($token)
+            ->getJson('/api/comments?per_page=1&cursor=not-a-valid-cursor')
+            ->assertUnprocessable();
     }
 
     public function test_unknown_sort_modes_are_rejected(): void
