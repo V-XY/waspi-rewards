@@ -139,3 +139,70 @@ jobs:
             --header "Authorization: Bearer $token" \
             "$PREVIEW_URL/api/comments")"
           echo "$comments" | jq -e '.data | length > 0' >/dev/null
+
+      - name: Verify live public demo
+        env:
+          LIVE_URL: https://waspi-rewards-0iak.onrender.com
+        run: |
+          for attempt in $(seq 1 36); do
+            status="$(curl --silent --show-error --output /tmp/live-health --write-out '%{http_code}' "$LIVE_URL/up" || true)"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          test "$status" = "200"
+
+          page="$(curl --fail --silent --show-error "$LIVE_URL/")"
+          echo "$page" | grep -q '<title>WASPI Rewards</title>'
+
+          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d '"' -f 2)"
+          test -n "$asset_path"
+
+          case "$asset_path" in
+            http://*|https://*) asset_url="$asset_path" ;;
+            *) asset_url="$LIVE_URL$asset_path" ;;
+          esac
+
+          asset_ready=false
+          for attempt in $(seq 1 36); do
+            asset="$(curl --fail --silent --show-error "$asset_url" || true)"
+            if echo "$asset" | grep -Fq 'Demo access is disabled for this deployment'; then
+              asset_ready=true
+              break
+            fi
+            sleep 5
+          done
+          test "$asset_ready" = "true"
+
+          token="$(curl --fail --silent --show-error \
+            --request POST "$LIVE_URL/api/demo-token" | jq -er '.token')"
+
+          users="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$LIVE_URL/api/users")"
+          echo "$users" | jq -e '.meta.authenticated_user_id != null and (.data | length >= 6)' >/dev/null
+
+          comments="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$LIVE_URL/api/comments")"
+          echo "$comments" | jq -e '.data | length > 0' >/dev/null
+
+          sample_comment_id="$(echo "$comments" | jq -er '.data[0].id')"
+          curl --fail --silent --show-error \
+            --request POST "$LIVE_URL/api/comments/$sample_comment_id/like" \
+            --header "Authorization: Bearer $token" >/dev/null
+          curl --fail --silent --show-error \
+            --request DELETE "$LIVE_URL/api/comments/$sample_comment_id/like" \
+            --header "Authorization: Bearer $token" >/dev/null
+
+          created="$(curl --fail --silent --show-error \
+            --request POST "$LIVE_URL/api/comments" \
+            --header "Authorization: Bearer $token" \
+            --header 'Content-Type: application/json' \
+            --data '{"text":"Automated live deployment smoke test."}')"
+          created_comment_id="$(echo "$created" | jq -er '.comment.id')"
+          curl --fail --silent --show-error \
+            --request DELETE "$LIVE_URL/api/comments/$created_comment_id" \
+            --header "Authorization: Bearer $token" >/dev/null
