@@ -216,7 +216,12 @@ jobs:
           feed_best="$(curl --fail --silent --show-error \
             --header "Authorization: Bearer $token" \
             "$LIVE_URL/api/comments?sort=best")"
-          echo "$feed_best" | jq -e --argjson id "$created_comment_id" '.data | any(.[]; .id == $id and .viewer_vote == "dislike" and (.dislikes_count == null) and (.best_score == null))' >/dev/null
+          echo "$feed_best" | jq -e '.data | length > 0 and all(.[]; (.dislikes_count == null) and (.best_score == null))' >/dev/null
+
+          feed_newest="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$LIVE_URL/api/comments?sort=newest")"
+          echo "$feed_newest" | jq -e --argjson id "$created_comment_id" '.data | any(.[]; .id == $id and .viewer_vote == "dislike")' >/dev/null
 
           vote_like="$(curl --fail --silent --show-error \
             --request POST "$LIVE_URL/api/comments/$created_comment_id/vote" \
@@ -230,11 +235,9 @@ jobs:
             --header "Authorization: Bearer $token")"
           echo "$vote_remove" | jq -e '.viewer_vote == null and .likes_count == 0' >/dev/null
 
-          for sort in newest oldest; do
-            curl --fail --silent --show-error \
-              --header "Authorization: Bearer $token" \
-              "$LIVE_URL/api/comments?sort=$sort" | jq -e '.data | length > 0' >/dev/null
-          done
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $token" \
+            "$LIVE_URL/api/comments?sort=oldest" | jq -e '.data | length > 0' >/dev/null
 
           curl --fail --silent --show-error \
             --request DELETE "$LIVE_URL/api/comments/$created_comment_id" \
