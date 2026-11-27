@@ -2,6 +2,12 @@
 
 WASPI Rewards is a Laravel and Vue application for tracking user activity, points, badges and a shared comments feed.
 
+## Live application
+
+[Open WASPI Rewards](https://waspi-rewards-0iak.onrender.com)
+
+The live Render service deploys from the repository's `main` branch. It runs on Render's Free plan and may take a short time to wake after inactivity. The isolated assessment preview is a separate service and is not the live application.
+
 ## Stack
 
 - Laravel 13 on PHP 8.5 (8.4 is the minimum the locked packages support)
@@ -144,4 +150,4 @@ php artisan test
 
 The suite covers reward rules, token handling, the demo endpoint, security headers, comment pagination, query-count stability and transaction rollback. The repository workflow in `.github/workflows/tests.yml` also runs the dependency audit, production Docker build and smoke checks, and hosted preview verification.
 
-The assessment preview is deployed separately from the existing service. The deployment guide records the hosting limits and verification steps.
+The assessment preview is deployed separately from the live service. The deployment guide records the hosting limits and verification steps.
