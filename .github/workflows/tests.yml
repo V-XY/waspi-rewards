@@ -138,7 +138,7 @@ jobs:
           comments="$(curl --fail --silent --show-error \
             --header "Authorization: Bearer $token" \
             "$PREVIEW_URL/api/comments")"
-          echo "$comments" | jq -e '.data | length > 0 and all(.[]; (.timestamp_source != null) and (.created_at != null))' >/dev/null
+          echo "$comments" | jq -e '.data | length > 0 and all(.[]; .created_at != null)' >/dev/null
 
       - name: Verify live public demo
         if: github.event_name == 'push'
@@ -188,7 +188,7 @@ jobs:
           comments="$(curl --fail --silent --show-error \
             --header "Authorization: Bearer $token" \
             "$LIVE_URL/api/comments")"
-          echo "$comments" | jq -e '.data | length > 0' >/dev/null
+          echo "$comments" | jq -e '.data | length > 0 and all(.[]; (.timestamp_source != null) and (.created_at != null))' >/dev/null
 
           sample_comment_id="$(echo "$comments" | jq -er '.data[0].id')"
           curl --fail --silent --show-error \
