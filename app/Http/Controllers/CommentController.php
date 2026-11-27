@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Services\RewardService;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\Cursor;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -24,7 +28,22 @@ class CommentController extends Controller
         $validated = $request->validate([
             'per_page' => 'sometimes|integer|min:1|max:'.self::MAX_PAGE_SIZE,
             'sort' => 'sometimes|in:best,newest,oldest',
+            'cursor' => 'sometimes|string|max:2048',
         ]);
+
+        $cursor = null;
+        if (isset($validated['cursor'])) {
+            try {
+                $decodedCursor = Crypt::decryptString($validated['cursor']);
+            } catch (DecryptException) {
+                throw ValidationException::withMessages(['cursor' => 'The cursor is invalid.']);
+            }
+
+            $cursor = Cursor::fromEncoded($decodedCursor);
+            if (! $cursor) {
+                throw ValidationException::withMessages(['cursor' => 'The cursor is invalid.']);
+            }
+        }
 
         $userId = $request->user()->id;
         $sort = $validated['sort'] ?? 'best';
@@ -82,9 +101,23 @@ class CommentController extends Controller
                 ->orderByDesc('comments.id'),
         };
 
-        $comments = $query->cursorPaginate($validated['per_page'] ?? self::DEFAULT_PAGE_SIZE);
+        $comments = $query->cursorPaginate(
+            $validated['per_page'] ?? self::DEFAULT_PAGE_SIZE,
+            ['*'],
+            'cursor',
+            $cursor
+        );
 
-        return response()->json($comments);
+        $nextCursor = $comments->nextCursor();
+        $previousCursor = $comments->previousCursor();
+
+        // Laravel cursors contain the ordering values; encrypt them so the private
+        // ranking score cannot be recovered from a client-visible pagination token.
+        return response()->json([
+            'data' => $comments->items(),
+            'next_cursor' => $nextCursor ? Crypt::encryptString($nextCursor->encode()) : null,
+            'prev_cursor' => $previousCursor ? Crypt::encryptString($previousCursor->encode()) : null,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
