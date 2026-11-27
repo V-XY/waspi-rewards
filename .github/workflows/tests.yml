@@ -157,6 +157,25 @@ jobs:
           page="$(curl --fail --silent --show-error "$LIVE_URL/")"
           echo "$page" | grep -q '<title>WASPI Rewards</title>'
 
+          asset_path="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d '"' -f 2)"
+          test -n "$asset_path"
+
+          case "$asset_path" in
+            http://*|https://*) asset_url="$asset_path" ;;
+            *) asset_url="$LIVE_URL$asset_path" ;;
+          esac
+
+          asset_ready=false
+          for attempt in $(seq 1 36); do
+            asset="$(curl --fail --silent --show-error "$asset_url" || true)"
+            if echo "$asset" | grep -Fq 'Demo access is disabled for this deployment'; then
+              asset_ready=true
+              break
+            fi
+            sleep 5
+          done
+          test "$asset_ready" = "true"
+
           token="$(curl --fail --silent --show-error \
             --request POST "$LIVE_URL/api/demo-token" | jq -er '.token')"
 
