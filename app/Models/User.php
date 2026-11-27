@@ -36,7 +36,7 @@ class User extends Authenticatable
 
     public function likes(): HasMany
     {
-        return $this->hasMany(Like::class);
+        return $this->hasMany(Like::class)->where('vote_type', 'like');
     }
 
     public function getBadgeAttribute(): ?string
