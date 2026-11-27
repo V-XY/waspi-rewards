@@ -100,6 +100,7 @@ class CommentFeedTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('comment.likes_count', 0)
             ->assertJsonPath('comment.liked_by_user', false)
+            ->assertJsonPath('comment.timestamp_source', 'native')
             ->assertJsonPath('comment.user.name', $user->name);
     }
 
