@@ -18,6 +18,18 @@ The public service is configured as an isolated demonstration environment. It us
 - Laravel Sanctum personal access tokens
 - Docker and Apache
 
+## Comments, votes and ranking
+
+- Comment timestamps are stored in UTC and displayed in the viewer's local timezone.
+- App-created comments carry native timestamp provenance. Generated assessment comments are marked as samples; their original historical posting times are not available in the source dataset.
+- Likes show a public count. Dislikes are accepted as private ranking signals and their totals are not exposed in the feed API.
+- Each account has one active vote per comment and can switch or remove it.
+- The existing 500-point reward at the tenth like is preserved. Dislikes do not award points.
+- Best uses the Wilson lower confidence bound, with a small freshness adjustment for recently supported comments. Newest and Oldest remain available.
+- Ranking is based on vote feedback, not reward points.
+
+The public demo issues tokens for one shared demo account, so its vote state is shared between visitors. Individual voter identity requires individual user accounts; the public demo should not be treated as a multi-user production environment.
+
 ## Local development
 
 Requirements: PHP 8.4+, Composer, Node.js, npm and SQLite or PostgreSQL.
