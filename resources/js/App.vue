@@ -30,7 +30,8 @@
         <div v-for="comment in comments" :key="comment.id" class="post">
           <div class="post-header">
             <strong>{{ authorName(comment) }}</strong>
-            <span class="date">{{ formatDate(comment.created_at) }}</span>
+            <time class="date" :datetime="comment.created_at" :title="comment.created_at">{{ formatDate(comment.created_at) }}</time>
+            <span v-if="comment.timestamp_source === 'seeded'" class="sample-label">Sample</span>
           </div>
           <p class="post-text">{{ comment.text }}</p>
           <div class="post-actions">
@@ -416,10 +417,13 @@ export default {
 
       if (Number.isNaN(date.getTime())) return '';
 
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
+      return date.toLocaleString('en-GB', {
         day: 'numeric',
+        month: 'short',
         year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
       });
     },
   },
