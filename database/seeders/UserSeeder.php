@@ -275,6 +275,7 @@ class UserSeeder extends Seeder
             $comment = Comment::create([
                 'user_id' => $user->id,
                 'text' => $text,
+                'timestamp_source' => 'seeded',
             ]);
 
             $rewardService->handleNewComment($comment);
