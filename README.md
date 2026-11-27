@@ -6,7 +6,9 @@ WASPI Rewards is a Laravel and Vue application for tracking user activity, point
 
 [Open WASPI Rewards](https://waspi-rewards-0iak.onrender.com)
 
-The live Render service deploys from the repository's `main` branch. It runs on Render's Free plan and may take a short time to wake after inactivity. The isolated assessment preview is a separate service and is not the live application.
+The live Render service deploys from the repository's `main` branch. It runs on Render's Free plan and may take a short time to wake after inactivity.
+
+The public service is configured as an isolated demonstration environment. It uses a local SQLite database inside the container, with the sample users and activity seeded at startup. This keeps the public demo separate from real user data, but the database is ephemeral: comments, likes and points can reset when Render replaces or restarts the instance. Do not use this deployment for durable records. The assessment preview is a separate service with its own PostgreSQL database.
 
 ## Stack
 
@@ -100,7 +102,7 @@ Caches for configuration and views are built when the container starts, after it
 
 ## Demo access
 
-Public demo access is disabled by default. Enable it only in an isolated demonstration environment:
+Public demo access is disabled by default in the application configuration. The main Render service enables it only because that service is configured as an isolated, disposable demonstration environment. For another deployment, enable it only when it is isolated from real user data:
 
 ```text
 WASPI_DEMO_ACCESS_ENABLED=true
