@@ -211,6 +211,10 @@ class RewardsApiTest extends TestCase
         $demoUser = User::where('email', config('waspi.demo_user_email'))->firstOrFail();
 
         $this->assertNotSame('password', $demoUser->password);
+        $this->assertDatabaseHas('comments', [
+            'user_id' => User::where('email', 'maxime@example.com')->value('id'),
+            'timestamp_source' => 'seeded',
+        ]);
     }
 
     public function test_demo_token_endpoint_is_disabled_by_default(): void
