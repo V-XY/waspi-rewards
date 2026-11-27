@@ -10,10 +10,15 @@ class Comment extends Model
 {
     protected $fillable = ['user_id', 'text', 'timestamp_source'];
 
+    protected $hidden = ['dislikes_count', 'best_score'];
+
     protected function casts(): array
     {
         return [
             'liked_by_user' => 'boolean',
+            'likes_count' => 'integer',
+            'dislikes_count' => 'integer',
+            'best_score' => 'float',
         ];
     }
 

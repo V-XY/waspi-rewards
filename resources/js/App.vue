@@ -27,6 +27,17 @@
       <button type="button" class="add-btn" @click="showModal">Add comment</button>
 
       <section class="feed" aria-label="Comments">
+        <div class="feed-toolbar">
+          <h2>Comments</h2>
+          <label class="sort-control">
+            <span>Sort by</span>
+            <select v-model="sort" :disabled="isLoading || isLoadingMore" @change="changeSort">
+              <option value="best">Best</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </label>
+        </div>
         <div v-for="comment in comments" :key="comment.id" class="post">
           <div class="post-header">
             <strong>{{ authorName(comment) }}</strong>
@@ -159,6 +170,7 @@ export default {
       user: null,
       leaderboard: [],
       comments: [],
+      sort: 'best',
       nextCursor: null,
       newComment: '',
       isModalOpen: false,
@@ -247,7 +259,7 @@ export default {
       try {
         const [users, page] = await Promise.all([
           this.request('get', '/users'),
-          this.request('get', '/comments', { params: { per_page: PAGE_SIZE } }),
+          this.request('get', '/comments', { params: { per_page: PAGE_SIZE, sort: this.sort } }),
         ]);
 
         this.applyUsers(users.data);
@@ -261,6 +273,12 @@ export default {
       }
     },
 
+    changeSort() {
+      this.comments = [];
+      this.nextCursor = null;
+      this.loadFeed();
+    },
+
     async loadMore() {
       if (!this.hasMore || this.isLoadingMore) return;
 
@@ -268,7 +286,7 @@ export default {
 
       try {
         const page = await this.request('get', '/comments', {
-          params: { per_page: PAGE_SIZE, cursor: this.nextCursor },
+          params: { per_page: PAGE_SIZE, cursor: this.nextCursor, sort: this.sort },
         });
 
         const known = new Set(this.comments.map((comment) => comment.id));
@@ -345,10 +363,9 @@ export default {
       try {
         const { data } = await this.request('post', '/comments', { data: { text } });
 
-        this.comments = [data.comment, ...this.comments];
         this.newComment = '';
         this.isModalOpen = false;
-        await this.refreshUsers();
+        await this.loadFeed();
       } catch (error) {
         this.postError = error.response?.status === 422
           ? 'A comment must be between 1 and 1000 characters.'
@@ -374,7 +391,9 @@ export default {
         comment.liked_by_user = response.data.viewer_vote === 'like';
         comment.likes_count = response.data.likes_count;
 
-        if (currentVote === 'like' || nextVote === 'like') {
+        if (this.sort === 'best') {
+          await this.loadFeed();
+        } else if (currentVote === 'like' || nextVote === 'like') {
           await this.refreshUsers();
         }
       } catch (error) {
