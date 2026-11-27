@@ -19,4 +19,6 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
     Route::post('/comments/{comment}/like', [LikeController::class, 'store']);
     Route::delete('/comments/{comment}/like', [LikeController::class, 'destroy']);
+    Route::post('/comments/{comment}/vote', [LikeController::class, 'vote'])->middleware('throttle:30,1');
+    Route::delete('/comments/{comment}/vote', [LikeController::class, 'removeVote'])->middleware('throttle:30,1');
 });
