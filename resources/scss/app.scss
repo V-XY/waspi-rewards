@@ -230,6 +230,7 @@ button {
 }
 
 .like-btn,
+.dislike-btn,
 .del-btn {
   border: 1px solid $border;
   background: transparent;
@@ -246,6 +247,12 @@ button {
 .like-btn.is-liked {
   border-color: #f2c6c2;
   color: $danger;
+}
+
+.dislike-btn.is-disliked {
+  border-color: #cbd5e1;
+  background: #f3f4f6;
+  color: $text;
 }
 
 .del-btn {

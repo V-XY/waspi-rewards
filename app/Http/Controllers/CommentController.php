@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\Like;
 use App\Services\RewardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,11 @@ class CommentController extends Controller
             ->with('user:id,name')
             ->withCount('likes')
             ->withExists(['likes as liked_by_user' => fn ($query) => $query->where('user_id', $userId)])
+            ->addSelect(['viewer_vote' => Like::query()
+                ->select('vote_type')
+                ->whereColumn('comment_id', 'comments.id')
+                ->where('user_id', $userId)
+                ->limit(1)])
             ->orderByDesc('id')
             ->cursorPaginate($validated['per_page'] ?? self::DEFAULT_PAGE_SIZE);
 
@@ -56,6 +62,7 @@ class CommentController extends Controller
 
         $comment->load('user:id,name')->loadCount('likes');
         $comment->setAttribute('liked_by_user', false);
+        $comment->setAttribute('viewer_vote', null);
 
         return response()->json([
             'message' => 'Comment created',

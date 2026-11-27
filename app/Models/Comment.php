@@ -22,8 +22,18 @@ class Comment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function likes(): HasMany
+    public function votes(): HasMany
     {
         return $this->hasMany(Like::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->votes()->where('vote_type', 'like');
+    }
+
+    public function dislikes(): HasMany
+    {
+        return $this->votes()->where('vote_type', 'dislike');
     }
 }
