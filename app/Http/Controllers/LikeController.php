@@ -23,6 +23,7 @@ class LikeController extends Controller
                 $like = Like::create([
                     'user_id' => $request->user()->id,
                     'comment_id' => $comment->id,
+                    'vote_type' => 'like',
                 ]);
 
                 // A reward failure must not leave a persisted like without its
@@ -42,10 +43,98 @@ class LikeController extends Controller
         ], 201);
     }
 
+    public function vote(Request $request, Comment $comment): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:like,dislike',
+        ]);
+
+        $type = $validated['type'];
+
+        try {
+            $vote = DB::transaction(function () use ($request, $comment, $type) {
+                $vote = Like::query()
+                    ->where('user_id', $request->user()->id)
+                    ->where('comment_id', $comment->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $vote) {
+                    $vote = Like::create([
+                        'user_id' => $request->user()->id,
+                        'comment_id' => $comment->id,
+                        'vote_type' => $type,
+                    ]);
+
+                    if ($type === 'like') {
+                        $this->rewardService->handleNewLike($vote);
+                    }
+
+                    return $vote;
+                }
+
+                if ($vote->vote_type !== $type) {
+                    $vote->update(['vote_type' => $type]);
+
+                    if ($type === 'like') {
+                        $this->rewardService->handleNewLike($vote);
+                    }
+                }
+
+                return $vote;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent request may have created the unique vote first.
+            $vote = Like::query()
+                ->where('user_id', $request->user()->id)
+                ->where('comment_id', $comment->id)
+                ->firstOrFail();
+
+            if ($vote->vote_type !== $type) {
+                DB::transaction(function () use ($vote, $type) {
+                    $vote->update(['vote_type' => $type]);
+
+                    if ($type === 'like') {
+                        $this->rewardService->handleNewLike($vote);
+                    }
+                });
+            }
+        }
+
+        $comment->loadCount('likes');
+
+        return response()->json([
+            'message' => 'Vote saved',
+            'viewer_vote' => $vote->vote_type,
+            'likes_count' => $comment->likes_count,
+        ]);
+    }
+
+    public function removeVote(Request $request, Comment $comment): JsonResponse
+    {
+        DB::transaction(function () use ($request, $comment) {
+            Like::query()
+                ->where('user_id', $request->user()->id)
+                ->where('comment_id', $comment->id)
+                ->lockForUpdate()
+                ->first()
+                ?->delete();
+        });
+
+        $comment->loadCount('likes');
+
+        return response()->json([
+            'message' => 'Vote removed',
+            'viewer_vote' => null,
+            'likes_count' => $comment->likes_count,
+        ]);
+    }
+
     public function destroy(Request $request, Comment $comment): JsonResponse
     {
         $like = Like::where('user_id', $request->user()->id)
             ->where('comment_id', $comment->id)
+            ->where('vote_type', 'like')
             ->first();
 
         if (! $like) {
