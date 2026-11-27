@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -27,7 +27,6 @@ class UserController extends Controller
         $result = $users->map(fn (User $user) => [
             'id' => $user->id,
             'name' => $user->name,
-            'email' => $user->email,
             'points' => $user->points,
             'badge' => $user->badge,
             'next_badge' => $user->next_badge,

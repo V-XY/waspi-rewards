@@ -4,7 +4,7 @@ WASPI Rewards is a Laravel and Vue application for tracking user activity, point
 
 ## Stack
 
-- Laravel 13 and PHP 8.4
+- Laravel 13 on PHP 8.5 (8.4 is the minimum the locked packages support)
 - Vue 3 with Vite
 - PostgreSQL for hosted data; SQLite for local development
 - Laravel Sanctum personal access tokens
@@ -86,6 +86,12 @@ QUEUE_CONNECTION=sync
 
 Keep secrets in the hosting provider's environment settings. Never commit application keys, database URLs or bearer tokens.
 
+`APP_URL` must match the address visitors use. Laravel builds the script and stylesheet links from it, so a mismatch between the two can stop the page from loading its JavaScript. If the Render service is renamed or given a custom domain, update `APP_URL` in the same change.
+
+The application trusts the forwarded headers from Render's proxy, so HTTPS detection and generated links follow the public address. Every response carries security headers: `nosniff`, a frame lock, a referrer policy, and a Content-Security-Policy that allows scripts and API calls only from the same origin. The strict policy is skipped when `APP_ENV=local` so the Vite development server still works.
+
+Caches for configuration and views are built when the container starts, after its environment variables are available.
+
 ## Demo access
 
 Public demo access is disabled by default. Enable it only in an isolated demonstration environment:
@@ -99,7 +105,9 @@ The seeded demo account is the only account that can receive a token from the ra
 
 ## API
 
-The users endpoint requires a bearer token:
+The comments feed is paginated with cursors. Request a page with `GET /api/comments?per_page=20`, then pass the `next_cursor` value from the response as `cursor` to get the following page. `per_page` accepts 1 to 50 and defaults to 20.
+
+The users endpoint requires a bearer token. It returns each user's name, points, badge and activity counts. Email addresses are not included.
 
 ```http
 GET /api/users
@@ -122,16 +130,18 @@ Credentials must be sent in the Authorization header, not in query parameters.
 | Comments milestone | 50 comments | 2,500 |
 | Likes milestone | 10 likes | 500 |
 
-Each milestone is granted once per user. A database uniqueness constraint protects against duplicate awards.
+Each milestone is granted once per user. A database uniqueness constraint protects against duplicate awards. Comment and like writes are committed together with their reward handling, so a reward failure does not leave a partial activity record.
 
 ## Verification
 
-Run the automated tests with:
+Build the frontend first, because feature tests render a page that needs the compiled assets:
 
 ```bash
+npm ci
+npm run build
 php artisan test
 ```
 
-GitHub Actions also audits npm dependencies, builds the frontend and Docker image, then smoke-tests the container, health endpoint, page, compiled assets, demo-token endpoint and authenticated API.
+The suite covers reward rules, token handling, the demo endpoint, security headers, comment pagination, query-count stability and transaction rollback. The repository workflow in `.github/workflows/tests.yml` also runs the dependency audit, production Docker build and smoke checks, and hosted preview verification.
 
 The assessment preview is deployed separately from the existing service. The deployment guide records the hosting limits and verification steps.

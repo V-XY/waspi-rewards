@@ -1,24 +1,14 @@
 <?php
 
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DemoTokenController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\AuthenticateWithAccessToken;
-use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/demo-token', function () {
-    abort_unless(config('waspi.demo_access_enabled'), 404);
-
-    $user = User::where('email', config('waspi.demo_user_email'))->first();
-
-    abort_unless($user, 503, 'Demo account is not configured.');
-
-    return response()->json([
-        'token' => $user->createToken('public-demo', ['*'], now()->addHour())->plainTextToken,
-        'expires_in' => 3600,
-    ]);
-})->middleware('throttle:5,1');
+Route::post('/demo-token', DemoTokenController::class)
+    ->middleware('throttle:5,1');
 
 Route::get('/users', [UserController::class, 'index'])
     ->middleware(AuthenticateWithAccessToken::class);

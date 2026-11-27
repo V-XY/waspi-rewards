@@ -5,34 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Services\RewardService;
-use Illuminate\Http\Request;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LikeController extends Controller
 {
-    protected RewardService $rewardService;
-
-    public function __construct(RewardService $rewardService)
+    public function __construct(protected RewardService $rewardService)
     {
-        $this->rewardService = $rewardService;
     }
 
     public function store(Request $request, Comment $comment): JsonResponse
     {
-        $existing = Like::where('user_id', $request->user()->id)
-            ->where('comment_id', $comment->id)
-            ->first();
+        try {
+            $like = DB::transaction(function () use ($request, $comment) {
+                $like = Like::create([
+                    'user_id' => $request->user()->id,
+                    'comment_id' => $comment->id,
+                ]);
 
-        if ($existing) {
+                // A reward failure must not leave a persisted like without its
+                // corresponding reward decision.
+                $this->rewardService->handleNewLike($like);
+
+                return $like;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // The unique index is the final guard against concurrent duplicate likes.
             return response()->json(['message' => 'Already liked'], 422);
         }
-
-        $like = Like::create([
-            'user_id' => $request->user()->id,
-            'comment_id' => $comment->id,
-        ]);
-
-        $this->rewardService->handleNewLike($like);
 
         return response()->json([
             'message' => 'Liked',
@@ -46,7 +48,7 @@ class LikeController extends Controller
             ->where('comment_id', $comment->id)
             ->first();
 
-        if (!$like) {
+        if (! $like) {
             return response()->json(['message' => 'Not liked'], 404);
         }
 

@@ -322,3 +322,45 @@ button {
     justify-content: flex-start;
   }
 }
+.notice {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #fff;
+  color: $muted;
+  font-size: 14px;
+
+  &.error {
+    background: #fdf2f1;
+    color: $danger;
+  }
+}
+
+.like-btn .count {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.more-btn {
+  padding: 9px 18px;
+  border: 1px solid $border;
+  border-radius: 6px;
+  background: $surface;
+  color: $text;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+  }
+}

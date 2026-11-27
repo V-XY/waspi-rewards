@@ -30,6 +30,8 @@ services:
         value: https://waspi-rewards-assessment.onrender.com
       - key: LOG_CHANNEL
         value: stderr
+      - key: LOG_LEVEL
+        value: warning
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_URL

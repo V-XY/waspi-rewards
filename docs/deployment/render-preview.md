@@ -7,7 +7,7 @@ The WASPI Rewards assessment preview runs on a separate Render service and datab
 - **Application:** [waspi-rewards-assessment.onrender.com](https://waspi-rewards-assessment.onrender.com)
 - **Render service:** `waspi-rewards-assessment`
 - **Source branch:** `test/harden-rewards-suite`
-- **Runtime:** Docker, PHP 8.4 and Apache
+- **Runtime:** Docker, PHP 8.5 and Apache
 - **Region:** Frankfurt
 - **Plan:** Free
 - **Health check:** `/up`
@@ -26,8 +26,9 @@ Important runtime settings:
 |---|---|
 | `APP_ENV=production` | Production Laravel configuration |
 | `APP_DEBUG=false` | Prevent debug details from being exposed |
+| `LOG_LEVEL=warning` | Keep routine request noise out of the Render logs |
 | `APP_KEY` | Unique Laravel encryption key stored in Render |
-| `APP_URL` | Public HTTPS service URL |
+| `APP_URL` | Public HTTPS service URL. It must match the address visitors use, because asset links are built from it |
 | `DB_CONNECTION=pgsql` | PostgreSQL driver |
 | `DB_URL` | Private Render database connection |
 | `RUN_DATABASE_SETUP=true` | Apply migrations and seed the assessment data at startup |
@@ -38,19 +39,11 @@ The database bootstrap is repeat-safe. Migrations run on startup, the demo accou
 
 ## Verification
 
-GitHub Actions verifies the PHP test suite, npm dependency audit, Vite production build, Docker image build, a container smoke test and the live assessment preview. The container smoke test checks:
+The GitHub Actions workflow in `.github/workflows/tests.yml` installs PHP and npm dependencies, audits frontend dependencies, builds the frontend and Docker image, runs the container smoke test, and checks the hosted preview.
 
-- Laravel health endpoint.
-- Rendered application page and compiled Vue asset.
-- Demo-token issuance.
-- Authenticated users API and authenticated-user metadata.
-- PostgreSQL PHP driver availability.
+Render checks the service through the Laravel `/up` endpoint before it routes traffic to a new deployment, and the initial hosted boot completed the PostgreSQL migrations and the seed operation.
 
-The hosted-preview check waits for Render to wake the service, then verifies the live health endpoint, page title, compiled JavaScript asset, demo-token endpoint, authenticated users data and comments feed. It is read-only and does not alter the seeded demo data.
-
-Render's own deployment checks also confirm that the hosted service starts and that `/up` returns HTTP 200. The initial hosted boot also completed PostgreSQL migrations and the seed operation.
-
-A full manual browser walkthrough of adding a comment, liking it and reloading to confirm persistence remains the final assessor-facing interaction check.
+A browser walkthrough is still the final check for the assessor-facing behavior: load the page, add a comment, like it, reload to confirm persistence, load more comments, and delete a comment that belongs to the demo account.
 
 ## Free-tier limits
 
@@ -60,6 +53,20 @@ A full manual browser walkthrough of adding a comment, liking it and reloading t
 - The preview is temporary and is not suitable for production workloads or long-term data retention.
 
 No paid Render resources are part of this assessment setup. Check the Render dashboard for current free-tier limits before relying on the preview.
+
+## If the page stays blank
+
+The page first shows the words "Loading WASPI Rewards." and then replaces them with the rewards feed. If the words stay on screen, the JavaScript did not run. Open the browser developer tools and check two places. The Console tab shows script or MIME type errors. The Network tab shows whether the request for the file under `/build/assets/` returned a JavaScript file. A response of type HTML for that file means the build output is missing or the path does not match `APP_URL`.
+
+If the feed shows "The rewards feed is not available right now," the demo account or the demo token endpoint is disabled. Check `WASPI_DEMO_ACCESS_ENABLED` and `WASPI_DEMO_USER_EMAIL`.
+
+## Known limits
+
+The comments feed is paginated with cursors, 20 comments per page. Each page eagerly loads its authors and computes like counts and the viewer's like state without an N+1 query per comment.
+
+Comment creation and its reward handling share a database transaction. Like creation and its reward handling also share a transaction. A failure in reward handling therefore rolls back the activity record rather than leaving a partial write.
+
+The deployment currently builds from the branch `test/harden-rewards-suite`. Changes merged to `main` do not reach this service until the branch or the Blueprint changes.
 
 ## Demonstration flow
 
