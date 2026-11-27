@@ -46,6 +46,7 @@ class CommentController extends Controller
             $comment = Comment::create([
                 'user_id' => $request->user()->id,
                 'text' => $validated['text'],
+                'timestamp_source' => 'native',
             ]);
 
             $this->rewardService->handleNewComment($comment);
