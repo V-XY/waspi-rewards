@@ -185,6 +185,15 @@ export default {
             storeToken(data.token);
             return data.token;
           })
+          .catch((error) => {
+            if (error.response?.status === 404) {
+              error.demoAccessError = 'disabled';
+            } else if (error.response?.status === 503) {
+              error.demoAccessError = 'account-missing';
+            }
+
+            throw error;
+          })
           .finally(() => {
             tokenRequest = null;
           });
@@ -292,8 +301,17 @@ export default {
       if (status === 429) {
         return 'Too many requests. Wait a minute and try again.';
       }
-      if (status === 404 || status === 503) {
-        return 'The rewards feed is not available right now.';
+      if (error.demoAccessError === 'disabled') {
+        return 'Demo access is disabled for this deployment. Please contact the site owner.';
+      }
+      if (error.demoAccessError === 'account-missing') {
+        return 'The demo account is not configured. Please contact the site owner.';
+      }
+      if (status === 404) {
+        return 'The requested item could not be found. Reload the page and try again.';
+      }
+      if (status === 503) {
+        return 'The service is temporarily unavailable. Please try again shortly.';
       }
       return 'Something went wrong. Reload the page to try again.';
     },
